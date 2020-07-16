@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.ico">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"meegle.github.io","root":"/","scheme":"Gemini","version":"8.0.0-rc.4","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="几个概念存储进制（二进制、八进制、十进制、十六进制）、位（bit）、字节（byte）、字符 进制回顾计算机是用二进制存储的，即 1 和 0，表示一位。进制的转换：八进制（取 3 位二进制计算数值），十六进制（取 4 位二进制计算数值），十进制。负数怎么表示？原码、反码（正数反码 &#x3D; 原码，负数反码 &#x3D; 正数逐位取反 &amp; 符号位为1）、补码（反码 + 1）。  CPU电路中只有加法器，减法是">
+<meta property="og:type" content="article">
+<meta property="og:title" content="字符编码那点事">
+<meta property="og:url" content="http://meegle.github.io/2020/07/16/character-encoding/index.html">
+<meta property="og:site_name" content="MeeGle&#39;s Notes">
+<meta property="og:description" content="几个概念存储进制（二进制、八进制、十进制、十六进制）、位（bit）、字节（byte）、字符 进制回顾计算机是用二进制存储的，即 1 和 0，表示一位。进制的转换：八进制（取 3 位二进制计算数值），十六进制（取 4 位二进制计算数值），十进制。负数怎么表示？原码、反码（正数反码 &#x3D; 原码，负数反码 &#x3D; 正数逐位取反 &amp; 符号位为1）、补码（反码 + 1）。  CPU电路中只有加法器，减法是">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-07-16T14:16:53.000Z">
+<meta property="article:modified_time" content="2020-07-16T15:08:37.852Z">
+<meta property="article:author" content="Meegle">
+<meta property="article:tag" content="编码">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://meegle.github.io/2020/07/16/character-encoding/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>字符编码那点事 | MeeGle's Notes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <main class="main">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+        <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+        <span class="toggle-line toggle-line-first"></span>
+        <span class="toggle-line toggle-line-middle"></span>
+        <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">MeeGle's Notes</h1>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <section class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#几个概念"><span class="nav-number">1.</span> <span class="nav-text">几个概念</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#存储"><span class="nav-number">1.1.</span> <span class="nav-text">存储</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#进制回顾"><span class="nav-number">1.1.1.</span> <span class="nav-text">进制回顾</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#字节"><span class="nav-number">1.1.2.</span> <span class="nav-text">字节</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#字符"><span class="nav-number">1.1.3.</span> <span class="nav-text">字符</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#编码"><span class="nav-number">1.2.</span> <span class="nav-text">编码</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#常见的字符编码"><span class="nav-number">2.</span> <span class="nav-text">常见的字符编码</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#ASCII"><span class="nav-number">2.1.</span> <span class="nav-text">ASCII</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Unicode"><span class="nav-number">2.2.</span> <span class="nav-text">Unicode</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#存储长度"><span class="nav-number">2.2.1.</span> <span class="nav-text">存储长度</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#编码规则"><span class="nav-number">2.2.2.</span> <span class="nav-text">编码规则</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#大端-amp-小端"><span class="nav-number">2.2.3.</span> <span class="nav-text">大端 &amp; 小端</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#BOM"><span class="nav-number">2.2.4.</span> <span class="nav-text">BOM</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#UCS"><span class="nav-number">2.3.</span> <span class="nav-text">UCS</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ANSI"><span class="nav-number">2.4.</span> <span class="nav-text">ANSI</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#编码规则-1"><span class="nav-number">2.4.1.</span> <span class="nav-text">编码规则</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#字符集"><span class="nav-number">2.4.2.</span> <span class="nav-text">字符集</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#几个问题"><span class="nav-number">3.</span> <span class="nav-text">几个问题</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#网上，形如-amp-20005-是什么编码？"><span class="nav-number">3.1.</span> <span class="nav-text">网上，形如 &amp;#20005 是什么编码？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#x-和-u-在字符表示上有什么区别？"><span class="nav-number">3.2.</span> <span class="nav-text">\x 和 \u 在字符表示上有什么区别？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#NUL-和-NULL-的区别"><span class="nav-number">3.3.</span> <span class="nav-text">NUL 和 NULL 的区别</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考资料"><span class="nav-number">4.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </section>
+      <!--/noindex-->
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Meegle"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">Meegle</p>
+  <div class="site-description" itemprop="description">Just do it!</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">4</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </section>
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </header>
+
+      
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+  <a href="https://github.com/meegle" class="github-corner" title="Follow me on GitHub" aria-label="Follow me on GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a>
+
+<noscript>
+  <div id="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+      <div class="main-inner">
+        
+
+        <div class="content post posts-expand">
+          
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://meegle.github.io/2020/07/16/character-encoding/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Meegle">
+      <meta itemprop="description" content="Just do it!">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="MeeGle's Notes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          字符编码那点事
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-07-16 22:16:53 / 修改时间：23:08:37" itemprop="dateCreated datePublished" datetime="2020-07-16T22:16:53+08:00">2020-07-16</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/" itemprop="url" rel="index"><span itemprop="name">基础知识</span></a>
+                </span>
+            </span>
+
+          
+            <span id="/2020/07/16/character-encoding/" class="post-meta-item leancloud_visitors" data-flag-title="字符编码那点事" title="阅读次数">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span class="leancloud-visitors-count"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2020/07/16/character-encoding/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2020/07/16/character-encoding/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="几个概念"><a href="#几个概念" class="headerlink" title="几个概念"></a>几个概念</h2><h3 id="存储"><a href="#存储" class="headerlink" title="存储"></a>存储</h3><p>进制（二进制、八进制、十进制、十六进制）、位（bit）、字节（byte）、字符</p>
+<h4 id="进制回顾"><a href="#进制回顾" class="headerlink" title="进制回顾"></a>进制回顾</h4><p>计算机是用二进制存储的，即 1 和 0，表示一位。<br>进制的转换：八进制（取 3 位二进制计算数值），十六进制（取 4 位二进制计算数值），十进制。<br>负数怎么表示？原码、反码（正数反码 = 原码，负数反码 = 正数逐位取反 &amp; 符号位为1）、<strong>补码（反码 + 1）</strong>。</p>
+<blockquote>
+<p>CPU电路中只有加法器，减法是通过补码实现的。</p>
+</blockquote>
+<p>补码为什么是反码 + 1？<br><strong>反码 + 1 只是补码的一种计算方式，真正的理论基础是 模 和 同余数。</strong><br>拿时钟来说，一圈 12 小时，超过 12 就重新计算，所以 12 称为<strong>模</strong>。<br>时钟运算中，减去一个数，其实就相当于加上另外一个数（这个数与减数相加正好等于 12，也称为<strong>同余数</strong>）。<br>eg. 当前为 10 点，回到 6 点，我们需要减去 4，但实际加上 8 也能让时针指向 6 点。</p>
+<h4 id="字节"><a href="#字节" class="headerlink" title="字节"></a>字节</h4><p>计量单位，1byte = 8bit（即，1b = 8B），1KB = 1024bytes，MB / GB / TB / PB /…。</p>
+<h4 id="字符"><a href="#字符" class="headerlink" title="字符"></a>字符</h4><p>即各种符号，包括字母、数字、运算符号、标点符号和其他符号，以及一些功能性符号。</p>
+<h3 id="编码"><a href="#编码" class="headerlink" title="编码"></a>编码</h3><ul>
+<li>字符集 - 可以理解为字典，即，为每一个「字符」分配一个唯一的码位（也称码点 / Code Point），eg. Unicode。</li>
+<li>编码规则 - 将「码位」转换为字节序列的规则（编码 / 解码 可以理解为 加密 / 解密 的过程），eg. UTF-8。</li>
+</ul>
+<h2 id="常见的字符编码"><a href="#常见的字符编码" class="headerlink" title="常见的字符编码"></a>常见的字符编码</h2><h3 id="ASCII"><a href="#ASCII" class="headerlink" title="ASCII"></a>ASCII</h3><p>全称  American Standard Code for Information Interchange，美国信息交换标准代码…<a href="https://www.asciim.cn/" target="_blank" rel="noopener">&gt;&gt;</a>。<br>用一个字节（8位）存储，最高位为 0（保留），剩余7位二进制可表示 128 个字符，涵盖了所有的大小写字母、数字（0…9）、标点符号，以及在美式英语中使用的特殊控制字符。<br>扩展ASCII码：启用原先保留的最高二进制位，用于确定附加的 128 个特殊符号字符、外来语字母和图形符号。</p>
+<h3 id="Unicode"><a href="#Unicode" class="headerlink" title="Unicode"></a>Unicode</h3><p>又称 万国码，是 多语言软件制造商组成的统一码联盟（一个国际组织）定义的编码…<a href="https://home.unicode.org/" target="_blank" rel="noopener">&gt;&gt;</a>。<br>广义的 Unicode 是一个标准，定义了一个字符集以及一系列的编码规则，即，Unicode 字符集和 UTF-8 / UTF-16 / UTF-32 等等编码规则。</p>
+<blockquote>
+<p>UTF 表示 Unicode Transformation Format，即，Unicode 转码格式。</p>
+</blockquote>
+<a id="more"></a>
+
+<h4 id="存储长度"><a href="#存储长度" class="headerlink" title="存储长度"></a>存储长度</h4><p>不同的编码规则分 定长存储 和 变长存储 两种：</p>
+<ul>
+<li>定长 - 所有字符采用固定长度进行存储，转码时只需按固定长度读取，但比较浪费存储空间，以空间换时间。</li>
+<li>变长 - 区分高低字节字符进行存储，根据不同的编码规则有一定的计算消耗，以时间换空间。</li>
+</ul>
+<p>UTF-8 - 一个英文字符占1个字节，一个中文字符（含繁体）占 3 个字节。<br>UTF-16 - 一个英文字符或一个中文字符（含繁体）都需要 2 个字节，Unicode 扩展区的一些汉字存储需要 4 个字节。<br>UTF-32 - 任何字符的存储都需要 4 个字节。</p>
+<h4 id="编码规则"><a href="#编码规则" class="headerlink" title="编码规则"></a>编码规则</h4><p>UTF-8 是当下比较流行的 Unicode 编码规则。</p>
+<ul>
+<li>对于单字节的符号，字节的第一位设为 0，后面 7 位为这个符号的 Unicode 码；因此对于英文字母，UTF-8 编码和 ASCII 码是相同的。</li>
+<li>对于 n 字节的符号（n &gt; 1），第一个字节的前 n 位都设为 1，第 n + 1 位设为 0，后面字节的前两位一律设为 10；剩下的二进制位，全部为这个符号的 Unicode 码。</li>
+</ul>
+<p>转换表如下（字母 x 表示可用于编码的二进制位）：</p>
+<table>
+<thead>
+<tr>
+<th>Unicode 符号范围（十六进制）</th>
+<th>UTF-8 编码方式（二进制）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>0000 0000</code> ~ <code>0000 007F</code></td>
+<td><code>0xxxxxxx</code></td>
+</tr>
+<tr>
+<td><code>0000 0080</code> ~ <code>0000 07FF</code></td>
+<td><code>110xxxxx 10xxxxxx</code></td>
+</tr>
+<tr>
+<td><code>0000 0800</code> ~ <code>0000 FFFF</code></td>
+<td><code>1110xxxx 10xxxxxx 10xxxxxx</code></td>
+</tr>
+<tr>
+<td><code>0001 0000</code> ~ <code>0010 FFFF</code></td>
+<td><code>11110xxx 10xxxxxx 10xxxxxx 10xxxxxx</code></td>
+</tr>
+</tbody></table>
+<p>举个栗子：<br>“严”的 Unicode 码位是 <code>4E25</code>（二进制为 <code>100 1110 0010 0101</code>），处在转换表中第三行的 Unicode 符号范围内（0000 0800 - 0000 FFFF），因此“严”的 UTF-8 编码需要三个字节（格式是 <code>1110xxxx 10xxxxxx 10xxxxxx</code>）；<br>然后，从“严”的最后一个二进制位开始，依次从后向前填入格式中的 x，多出的位补 0。<br>这样就得到了，“严”的 UTF-8 编码是：<code>1110<u><strong>0100</strong></u> 10<u><strong>111000</strong></u> 10<u><strong>100101</strong></u></code><br>转换成十六进制就是 <code>E4 B8 A5</code>。</p>
+<blockquote>
+<p>UTF-8 编码本身不会嵌入 NUL 字节（0值），这便于某些程序语言用 NUL 标记字符串结尾，eg. <strong>C的字符串操作用 <code>\0</code> 做结尾判断</strong>。<br>但这其实是非二进制安全的，所以 Redis 用了 SNS（简单动态字符串）、Go 在1.5封装了 String 结构体。</p>
+</blockquote>
+<h4 id="大端-amp-小端"><a href="#大端-amp-小端" class="headerlink" title="大端 &amp; 小端"></a>大端 &amp; 小端</h4><p>为什么有 大端（BE，Big Endian） 和 小端（LE，Little Endian） 之分呢？<br>《格列佛游记》中有一个关于怎么剥鸡蛋的故事：先打破鸡蛋较大的一端，还是先打破鸡蛋较小的一端。<br>现实中，这样的情况也很多，比如，古人的阅读习惯是从右向左，而现在普遍是从左向右。<br>所以，计算机的世界中，多字节数据在存储时也有这样的分歧（<strong>字节序</strong>）：是将高序字节存储在起始地址，还是将低序字节存储在起始地址。<br>eg. 双字节数据 0x12345678：</p>
+<table>
+<thead>
+<tr>
+<th>字节序</th>
+<th>存储结果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>BE</td>
+<td><code>0x78 0x56</code> <code>0x34 0x12</code></td>
+</tr>
+<tr>
+<td>LE</td>
+<td><code>0x12 0x34</code> <code>0x56 0x78</code></td>
+</tr>
+</tbody></table>
+<p>多字节字符编码（UTF-16 / UCS-2 / UTF-32 等）同样面临字节序的问题，以“严”为例，Unicode 码位是 <code>4E25</code>，UCS-2 Big Endian 编码存储是 <code>4E 25</code>，UCS-2 Little Endian 编码存储是 <code>25 4E</code>。</p>
+<blockquote>
+<p>Windows 中的 Unicode 编码，其实就是 UTF-16 Little Endian（Windows2000 以前称 UCS-2 LE，后面 UCS 和 Unicode 统一标准了）。</p>
+</blockquote>
+<p>那么，计算机怎么识别编码顺序？Unicode 规范定义，每个文件的最前面加入一个表示<strong>编码顺序的字符，比如 UTF-16 中用 <code>FE FF</code> 表示</strong>。<br>如果开头是 <code>FE FF</code>，则表示大端方式，若为 <code>FF FE</code>，则为小端方式。</p>
+<h4 id="BOM"><a href="#BOM" class="headerlink" title="BOM"></a>BOM</h4><p>BOM，全称 Byte Order Mark，用作定义字节顺序和编码形式的签名，存在于多字节字符编码的文本文件开头。</p>
+<table>
+<thead>
+<tr>
+<th>BOM 字节</th>
+<th>编码方式</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>00 00 FE FF</code></td>
+<td>UTF-32 BE</td>
+</tr>
+<tr>
+<td><code>FF FE 00 00</code></td>
+<td>UTF-32 LE</td>
+</tr>
+<tr>
+<td><code>FE FF</code></td>
+<td>UTF-16 BE</td>
+</tr>
+<tr>
+<td><code>FF FE</code></td>
+<td>UTF-16 LE</td>
+</tr>
+<tr>
+<td><code>EF BE BF</code></td>
+<td>UTF-8</td>
+</tr>
+</tbody></table>
+<p>BOM 对 UTF-8 是没有意义的，因为 UTF-8 是以字节为单位，按码位顺序存储的。<br>而 UTF-16 / UTF-32 以字为单位，一个个字符（2 个字节或 4 个字节）读取，所以会涉及先读取第一个或第二个字节的情况（大小端之分）。</p>
+<p>既然 BOM 对 UTF-8 无意义，为什么要加上呢？<br>在 UTF-8 文件中放置 BOM 主要是微软的习惯，因为这样可以把 UTF-8 和 ASCII 等编码区分开，但这样的文件在 Windows 之外会带来问题。<br>比如，网页开头出现莫名其妙的空白符。</p>
+<blockquote>
+<p>Windows 中的 UTF-8 和 Unicode 都是带 BOM 头的。</p>
+</blockquote>
+<h3 id="UCS"><a href="#UCS" class="headerlink" title="UCS"></a>UCS</h3><p>UCS，全称 Universal Character Set，通用字符集，是国际标准化组织 ISO 开展的 ISO/IEC 10646 项目定义的编码。<br>UCS 和 Unicode 有着相同的字库和字码，相同的字符在两个标准中有着相同的位置。<br>1991年前后，UCS 和 Unicode 开始合并成果，并为创立一个单一编码表而协同工作（从 Unicode2.0 开始，Unicode 采用了与 ISO 10646-1 相同的字库和字码）。<br>相比 UCS，Unicode 发布更频繁、也支持更多特性（排序、比较等算法）。<br>编码规则有 UCS-2（2字节） 和 UCS-4（4字节）。</p>
+<h3 id="ANSI"><a href="#ANSI" class="headerlink" title="ANSI"></a>ANSI</h3><p>不同的国家和地区制定了不同的标准，由此产生了 GB2312 / GBK / GB18030 / Big5 / Shift_JIS 等各自的编码标准。<br>这些使用多个字节来代表一个字符的各种汉字延伸编码方式，称为 <strong>ANSI 编码</strong>。<br>在简体中文 Windows 操作系统中，ANSI 编码代表 GBK 编码；在繁体中文 Windows 操作系统中，ANSI 编码代表 Big5；若为英文文件，ANSI 编码代表 ASCII。</p>
+<h4 id="编码规则-1"><a href="#编码规则-1" class="headerlink" title="编码规则"></a>编码规则</h4><ul>
+<li>GB2312 - 国家标准，采用 EUC 存储，兼容 ASCII，每个汉字及符号占 2 个字节。</li>
+<li>GBK - 微软标准，单双字节变长编码，兼容 GB2312。</li>
+<li>GB18030 - 国家标准，兼容 GBK，符合 Unicode 规范，和 UTF-8 一样，是一种 Unicode 实现，变长编码：单字节 ASCII、双字节 GBK 以及用于填补所有 Unicode 码位的 4 字节。</li>
+</ul>
+<h4 id="字符集"><a href="#字符集" class="headerlink" title="字符集"></a>字符集</h4><ol>
+<li><p>内码 &amp; 国标码<br> 汉字<strong><a href="https://baike.baidu.com/item/%E6%B1%89%E5%AD%97%E6%9C%BA%E5%86%85%E7%A0%81" target="_blank" rel="noopener">机内码</a></strong>，又称 <strong>汉字 ASCII 码</strong>，简称 <strong>内码</strong>，指计算机内部存储，处理加工和传输汉字时所用的由 0 和 1 符号组成的代码。<br> <strong><a href="https://baike.baidu.com/item/%E5%9B%BD%E5%AE%B6%E6%A0%87%E5%87%86%E4%BB%A3%E7%A0%81" target="_blank" rel="noopener">国标码</a></strong>，全称 国家标准代码，强制标准冠以“GB”，推荐标准冠以“GB/T”，较早的标准是 GB2312，现时官方强制使用 GB18030 标准。<br> 汉字处理系统要保证中西文的兼容，当系统中同时存在 ASCII 码和汉字国标码时，将会产生二义性。<br> eg. 有两个字节的内容为 30H 和 21H，它们既可以表示汉字 <code>啊</code> 的国标码，又可以表示西文 <code>0</code> 和 <code>!</code> 的 ASCII 码。<br> 为此，<strong>汉字内码应对国标码加以适当处理和变换。</strong><br> GBK 编码的汉字的内码为 2 字节长，它是在相应国标码的每个字节最高位上加 1，即，<strong>汉字内码＝汉字国标码＋8080H（两个字节的最高位分别置为 1）</strong>.。<br> 例如，上述 <code>啊</code> 字的国标码是 <code>3021</code>，其汉字机内码则是 <code>B0A1</code>。<br> 附：在线中文转ASCII，<a href="http://www.jsons.cn/ascii/" target="_blank" rel="noopener">http://www.jsons.cn/ascii/</a></p>
+</li>
+<li><p>国际码 &amp; 国标码<br> 中国汉字通行的国际标准为我国于1981年制订的“信息交换用汉字编码字符集”，其标准号为 GB2312-80，简称<strong><a href="https://baike.baidu.com/item/%E5%9B%BD%E9%99%85%E7%A0%81" target="_blank" rel="noopener">国际码</a></strong>，是我国应用最广泛的汉字编码字符集。<br> 所以，通俗理解，国际码即最早的强制标准，在 GB2312-80 之后都称为 国标码。<br> <em>注：网上资料有限，如上结论可能有偏差，但也不用太纠结这两个概念的关系，大体知道就好，以国标码为主。</em></p>
+</li>
+<li><p>国标码 &amp; 区位码<br> <strong><a href="https://baike.baidu.com/item/%E5%8C%BA%E4%BD%8D%E7%A0%81" target="_blank" rel="noopener">区位码</a></strong>实际等同于国标码，国标码是一个 4 位十六进制数，区位码是一个 4 位十进制数，所以，<strong>国标码 = 区位码 + 2020H</strong>。<br> 每个国标码或区位码都对应着一个唯一的汉字或符号，因为十六进制数很少用到，所以常用的是区位码，它的前两位叫做区码，后两位叫做位码。</p>
+</li>
+</ol>
+<h2 id="几个问题"><a href="#几个问题" class="headerlink" title="几个问题"></a>几个问题</h2><h3 id="网上，形如-amp-20005-是什么编码？"><a href="#网上，形如-amp-20005-是什么编码？" class="headerlink" title="网上，形如 &amp;#20005 是什么编码？"></a>网上，形如 <code>&amp;#20005</code> 是什么编码？</h3><p><code>&amp;#20005</code> 是一种 Unicode 表示方式，为十进制码点值表示，常用于 HTML 中。<br>eg. “严”的 Unicode 码为 <code>4E25</code>（十六进制表示），转换为十进制是：4 * 16^3 + E * 16^2 + 2 * 16^1 + 5 * 16^0 = 20005。<br>其他表示方式如：</p>
+<ul>
+<li><code>\uhhhh</code>，16位码点值表示，eg. <code>\u4e25</code>。</li>
+<li><code>\Uhhhhhhhh</code>，32位码点值表示，eg. <code>\U00004e25</code>。</li>
+<li><code>\xhh</code>，字符编码后存储的十六进制表示，eg. <code>\xe4\xb8\xa5</code>。</li>
+<li><code>%hh</code>，同 <code>\xhh</code>，常用于URL中，eg. <code>%E4%B8%A5</code>。</li>
+</ul>
+<p>其中，h 代表一个十六进制数。</p>
+<h3 id="x-和-u-在字符表示上有什么区别？"><a href="#x-和-u-在字符表示上有什么区别？" class="headerlink" title="\x 和 \u 在字符表示上有什么区别？"></a><code>\x</code> 和 <code>\u</code> 在字符表示上有什么区别？</h3><p>码点值小于 256 的文字符号可以写成单个十六进制数转义的形式，eg. <code>A</code> 可用 <code>\x41</code> 表示，但更高的码点值必须用 <code>\u</code> 或 <code>\U</code> 转义。<br>eg. JavaScript 中：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">console</span>.log(<span class="string">"\u4e25"</span>); <span class="comment">// "严"</span></span><br><span class="line"><span class="built_in">console</span>.log(<span class="string">"\x41"</span>); <span class="comment">// "A"</span></span><br><span class="line"><span class="built_in">console</span>.log(<span class="string">"\xe4\b8\a5"</span>); <span class="comment">// 乱码...</span></span><br></pre></td></tr></table></figure>
+<p>不过，某些语言有提供了更高的码点值的 <code>\x</code> 表示，如 Golang：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">fmt.Println(<span class="string">"\u4e25"</span>); <span class="comment">// "严"</span></span><br><span class="line">fmt.Println(<span class="string">"\x41"</span>); <span class="comment">// "A"</span></span><br><span class="line">fmt.Println(<span class="string">"\xe4\xb8\xa5"</span>); <span class="comment">// "严"</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="NUL-和-NULL-的区别"><a href="#NUL-和-NULL-的区别" class="headerlink" title="NUL 和 NULL 的区别"></a>NUL 和 NULL 的区别</h3><p>NUL 用于结束一个 ASCII 字符串；NULL 用于表示什么也不指向（空指针）。<br><strong>ASCII 字符中的 <code>\0</code> 被称为 NUL</strong>；表示哪里也不指向的特殊的指针值则是 NULL。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><p>二进制补码计算原理详解，<a href="https://blog.csdn.net/zhuozuozhi/article/details/80896838" target="_blank" rel="noopener">https://blog.csdn.net/zhuozuozhi/article/details/80896838</a><br>深入理解原码、反码、补码，<a href="https://blog.csdn.net/afsvsv/article/details/94553228" target="_blank" rel="noopener">https://blog.csdn.net/afsvsv/article/details/94553228</a><br><a href="http://www.ruanyifeng.com/blog/2007/10/ascii_unicode_and_utf-8.html" target="_blank" rel="noopener">字符编码笔记：ASCII，Unicode 和 UTF-8</a><br>从字节理解 Unicode、UTF8、UTF16，<a href="https://www.cnblogs.com/crazylqy/p/10183715.html" target="_blank" rel="noopener">https://www.cnblogs.com/crazylqy/p/10183715.html</a><br>UTF-8 与 UCS-2 之间有何区别与联系，<a href="https://www.zhihu.com/question/302200063" target="_blank" rel="noopener">https://www.zhihu.com/question/302200063</a><br>字符串横向对比：C、Golang、Redis，<a href="https://studygolang.com/articles/1230" target="_blank" rel="noopener">https://studygolang.com/articles/1230</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E7%BC%96%E7%A0%81/" rel="tag"># 编码</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/07/08/rsync/" rel="prev" title="Rsync使用简介">
+      <i class="fa fa-chevron-left"></i> Rsync使用简介
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+        </div>
+        
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Meegle</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/valine@1/dist/Valine.min.js', () => {
+    new Valine(Object.assign({
+      el  : '#valine-comments',
+      path: location.pathname,
+    }, {"enable":true,"appId":"0DFjQujwMejBjMdRN3BXBbV4","appKey":"K5U8WSiJMA4o3T1OR1k1J23J","placeholder":"写下你的评论...","avatar":"mm","meta":["nick","mail","link"],"pageSize":10,"language":"zh-cn","visitor":true,"comment_count":true,"recordIP":false,"serverURLs":null}
+    ));
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>
