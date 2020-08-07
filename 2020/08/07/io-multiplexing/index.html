@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.ico">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"meegle.github.io","root":"/","scheme":"Gemini","version":"8.0.0-rc.4","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="任务类型程序任务类型一般分 CPU密集型 和 IO密集型。CPU密集型任务，指：进行大量计算，消耗CPU资源的任务，eg. 图像处理、音视频编码解码、复杂的科学计算等。IO密集型任务，指：涉及大量网络、磁盘等比较耗时的输入输出任务，eg. Web服务、数据库操作等。不论CPU密集型任务还是IO密集型任务，为了提高处理能力，从软件层面入手，有几种主流方式：启动多个服务实例（多进程、多线程、多协程）、">
+<meta property="og:type" content="article">
+<meta property="og:title" content="IO多路复用">
+<meta property="og:url" content="http://meegle.github.io/2020/08/07/io-multiplexing/index.html">
+<meta property="og:site_name" content="MeeGle&#39;s Notes">
+<meta property="og:description" content="任务类型程序任务类型一般分 CPU密集型 和 IO密集型。CPU密集型任务，指：进行大量计算，消耗CPU资源的任务，eg. 图像处理、音视频编码解码、复杂的科学计算等。IO密集型任务，指：涉及大量网络、磁盘等比较耗时的输入输出任务，eg. Web服务、数据库操作等。不论CPU密集型任务还是IO密集型任务，为了提高处理能力，从软件层面入手，有几种主流方式：启动多个服务实例（多进程、多线程、多协程）、">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://meegle.github.io/images/io-process.png">
+<meta property="og:image" content="http://meegle.github.io/images/bio.png">
+<meta property="og:image" content="http://meegle.github.io/images/nio.png">
+<meta property="og:image" content="http://meegle.github.io/images/io-multiplexing.png">
+<meta property="og:image" content="http://meegle.github.io/images/sigio.png">
+<meta property="og:image" content="http://meegle.github.io/images/aio.png">
+<meta property="og:image" content="http://meegle.github.io/images/io-multiplexing-principle.png">
+<meta property="article:published_time" content="2020-08-07T00:13:03.000Z">
+<meta property="article:modified_time" content="2020-08-07T00:28:24.103Z">
+<meta property="article:author" content="Meegle">
+<meta property="article:tag" content="IO模型">
+<meta property="article:tag" content="EPOLL">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://meegle.github.io/images/io-process.png">
+
+<link rel="canonical" href="http://meegle.github.io/2020/08/07/io-multiplexing/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>IO多路复用 | MeeGle's Notes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <main class="main">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+        <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+        <span class="toggle-line toggle-line-first"></span>
+        <span class="toggle-line toggle-line-middle"></span>
+        <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">MeeGle's Notes</h1>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <section class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#任务类型"><span class="nav-number">1.</span> <span class="nav-text">任务类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#IO-和-Socket"><span class="nav-number">2.</span> <span class="nav-text">IO 和 Socket</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#同步-异步-阻塞-非阻塞"><span class="nav-number">3.</span> <span class="nav-text">同步 &#x2F; 异步 &#x2F; 阻塞 &#x2F; 非阻塞</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#IO过程"><span class="nav-number">4.</span> <span class="nav-text">IO过程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#内核空间-用户空间"><span class="nav-number">4.1.</span> <span class="nav-text">内核空间 &#x2F; 用户空间</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#过程简述"><span class="nav-number">4.2.</span> <span class="nav-text">过程简述</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#I-O模型"><span class="nav-number">5.</span> <span class="nav-text">I&#x2F;O模型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Blocking-I-O"><span class="nav-number">5.1.</span> <span class="nav-text">Blocking I&#x2F;O</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Non-Blocking-I-O"><span class="nav-number">5.2.</span> <span class="nav-text">Non-Blocking I&#x2F;O</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#I-O-Multiplexing"><span class="nav-number">5.3.</span> <span class="nav-text">I&#x2F;O Multiplexing</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Signal-Driven-I-O"><span class="nav-number">5.4.</span> <span class="nav-text">Signal-Driven I&#x2F;O</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Asynchronous-I-O"><span class="nav-number">5.5.</span> <span class="nav-text">Asynchronous I&#x2F;O</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#I-O多路复用实现机制"><span class="nav-number">6.</span> <span class="nav-text">I&#x2F;O多路复用实现机制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#select"><span class="nav-number">6.1.</span> <span class="nav-text">select</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#过程简述-1"><span class="nav-number">6.1.1.</span> <span class="nav-text">过程简述</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#优缺点"><span class="nav-number">6.1.2.</span> <span class="nav-text">优缺点</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#poll"><span class="nav-number">6.2.</span> <span class="nav-text">poll</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#epoll"><span class="nav-number">6.3.</span> <span class="nav-text">epoll</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#函数定义"><span class="nav-number">6.3.1.</span> <span class="nav-text">函数定义</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#epoll-create"><span class="nav-number">6.3.1.1.</span> <span class="nav-text">epoll_create</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#epoll-create1"><span class="nav-number">6.3.1.2.</span> <span class="nav-text">epoll_create1</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#epoll-ctl"><span class="nav-number">6.3.1.3.</span> <span class="nav-text">epoll_ctl</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#epoll-wait"><span class="nav-number">6.3.1.4.</span> <span class="nav-text">epoll_wait</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#基本用法"><span class="nav-number">6.3.2.</span> <span class="nav-text">基本用法</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#核心设计"><span class="nav-number">6.3.3.</span> <span class="nav-text">核心设计</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#触发模式"><span class="nav-number">6.3.4.</span> <span class="nav-text">触发模式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#惊群问题"><span class="nav-number">6.3.5.</span> <span class="nav-text">惊群问题</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kqueue"><span class="nav-number">6.4.</span> <span class="nav-text">kqueue</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#实际应用"><span class="nav-number">7.</span> <span class="nav-text">实际应用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#几个问题"><span class="nav-number">8.</span> <span class="nav-text">几个问题</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Socket-为什么称-套接字？"><span class="nav-number">8.1.</span> <span class="nav-text">Socket 为什么称 套接字？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#异步一定是多线程吗？"><span class="nav-number">8.2.</span> <span class="nav-text">异步一定是多线程吗？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么说-epoll-是-同步非阻塞的？"><span class="nav-number">8.3.</span> <span class="nav-text">为什么说 epoll 是 同步非阻塞的？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么分-监听socket-和-连接socket？"><span class="nav-number">8.4.</span> <span class="nav-text">为什么分 监听socket 和 连接socket？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考资料"><span class="nav-number">9.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </section>
+      <!--/noindex-->
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Meegle"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">Meegle</p>
+  <div class="site-description" itemprop="description">Just do it!</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">5</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">7</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </section>
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </header>
+
+      
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+  <a href="https://github.com/meegle" class="github-corner" title="Follow me on GitHub" aria-label="Follow me on GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a>
+
+<noscript>
+  <div id="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+      <div class="main-inner">
+        
+
+        <div class="content post posts-expand">
+          
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://meegle.github.io/2020/08/07/io-multiplexing/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Meegle">
+      <meta itemprop="description" content="Just do it!">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="MeeGle's Notes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          IO多路复用
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-08-07 08:13:03 / 修改时间：08:28:24" itemprop="dateCreated datePublished" datetime="2020-08-07T08:13:03+08:00">2020-08-07</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E9%AB%98%E5%B9%B6%E5%8F%91/" itemprop="url" rel="index"><span itemprop="name">高并发</span></a>
+                </span>
+            </span>
+
+          
+            <span id="/2020/08/07/io-multiplexing/" class="post-meta-item leancloud_visitors" data-flag-title="IO多路复用" title="阅读次数">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span class="leancloud-visitors-count"></span>
+            </span>
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/2020/08/07/io-multiplexing/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/2020/08/07/io-multiplexing/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="任务类型"><a href="#任务类型" class="headerlink" title="任务类型"></a>任务类型</h2><p>程序任务类型一般分 CPU密集型 和 IO密集型。<br>CPU密集型任务，指：进行大量计算，消耗CPU资源的任务，eg. 图像处理、音视频编码解码、复杂的科学计算等。<br>IO密集型任务，指：涉及大量网络、磁盘等比较耗时的输入输出任务，eg. Web服务、数据库操作等。<br>不论CPU密集型任务还是IO密集型任务，为了提高处理能力，从软件层面入手，有几种主流方式：启动多个服务实例（多进程、多线程、多协程）、IO多路复用、异步IO。<br>实际应用时，会结合任务类型在上述方式中选择多种进行组合，以此搭建适合的高性能服务框架，eg. Apache 属于多进程多线程并配合 select 模型进行IO处理、Nginx 主要是 epoll 模型（IO多路复用） + 多进程。</p>
+<h2 id="IO-和-Socket"><a href="#IO-和-Socket" class="headerlink" title="IO 和 Socket"></a>IO 和 Socket</h2><p>Socket 又称 套接字，是一种进程间通信机制，在系统层面上封装了通过 IP + Port 进行 TCP / UDP 数据传输的接口，介于 OSI（Open System Interconnection）模型的传输层与应用层之间。</p>
+<blockquote>
+<p>严格来说，Socket 不归属于 OSI 的任何一层，它是应用层与 TCP/IP 协议族通信的中间软件抽象层。<br>在设计模式中，Socket 其实就是一个门面模式，它把复杂的 TCP/IP 协议族隐藏在 Socket 接口后面。<br>Socket 还可以用在同一主机不同进程间的通信（本地 Socket），且建立的是双向的通信。本地 Socket 与 网络 Socket 共用同一套接口，只是地址结构与某些参数不同。<br>进程间通信（IPC，Inter-Process Communication）方式，除了 Socket，还有：<strong>管道 Pipe</strong>、<strong>命名管道 FIFO</strong>、<strong>信号 Signal</strong>、<strong>消息队列 Message Queue</strong>、<strong>共享内存 Shared Memory</strong>。</p>
+</blockquote>
+<p>网络IO的本质是<strong>通过 Socket 对网卡进行读写</strong>，Socket 在 linux 系统被抽象为流，IO可以理解为对流的操作。</p>
+<blockquote>
+<p>普通的网络传输步骤如下：</p>
+<ol>
+<li>操作系统将数据从磁盘复制到操作系统内核的页缓存（内核缓冲区）中。</li>
+<li>应用将数据从内核缓冲区复制到应用的进程缓冲区中。</li>
+<li>应用将数据从进程缓冲区写回内核的 Socket 缓冲区中。</li>
+<li>操作系统将数据从 Socket 缓冲区复制到网卡，然后将其通过网络发出。</li>
+</ol>
+<p>注：上述过程可以通过 <strong>Zero-Copy（零拷贝机制）</strong> 进行优化，关于 Zero-Copy 后续再开篇来讲。</p>
+</blockquote>
+<h2 id="同步-异步-阻塞-非阻塞"><a href="#同步-异步-阻塞-非阻塞" class="headerlink" title="同步 / 异步 / 阻塞 / 非阻塞"></a>同步 / 异步 / 阻塞 / 非阻塞</h2><p>单从字面上看这几个概念，我们很容易把同步等同于阻塞，异步等同于非阻塞，但实际上，不同的层面有不同的理解。</p>
+<ol>
+<li>进程通信层面<ul>
+<li>“阻塞”是指进程在发起一个系统调用（System Call）后，由于该<strong>系统调用的操作（一般是涉及I/O操作，比较耗时）不能立即完成</strong>，需要等待一段时间，于是内核将进程挂起为<strong>等待（waiting）</strong>状态，以确保它不会被调度执行，占用CPU资源。</li>
+<li>非阻塞I/O系统调用（Non-Blocking I/O System Call）指一个非阻塞调用不会因I/O操作而挂起执行程序，而是会立即返回。</li>
+<li>异步I/O系统调用（Asychronous I/O System Call）也属于非阻塞系统调用（Non-Blocing System Call），不同的是，I/O操作完成后，操作系统会通知调用进程（设置一个用户空间特殊的变量值 或者 触发一个 Signal 或者 产生一个软中断 或者 调用应用程序的回调函数）。<br>不同于非阻塞I/O系统调用，异步I/O系统调用的结果必须是完整的，但这个操作完成的通知可以延迟到将来的某个时间点，即，返回结果的方式和内容有所差别。</li>
+</ul>
+</li>
+<li>IO系统调用层面<br>（单线程背景下）多数I/O系统调用是同步的，真正的异步I/O是需要内核级支持的，eg. libaio。</li>
+</ol>
+<p>非阻塞系统调用（Non-Blocking I/O System Call 与 Asynchronous I/O System Call）可以用于实现线程级别的 I/O 并发，与通过多进程实现的 I/O 并发相比可以减少内存消耗以及进程切换的开销。</p>
+<blockquote>
+<p>举个栗子：我们知道，JS是单线程的，那为什么 Ajax 可以实现异步 HTTP 请求？<br>本质还是事件驱动，即，把事件加入队列，通过 Event Loop 去轮询队列，待JS线程空闲时再执行回调函数。<br>所以，对于JS线程来讲，Ajax 是异步的，但在I/O调用上确实还是同步的。<br>注：JS引擎确实是单线程运行的，而浏览器会另开线程专门处理 Event Loop、HTTP 请求、界面渲染等。</p>
+</blockquote>
+<a id="more"></a>
+
+<h2 id="IO过程"><a href="#IO过程" class="headerlink" title="IO过程"></a>IO过程</h2><p>传统I/O的大致过程如下：<br><img src="/images/io-process.png" alt="alt"></p>
+<h3 id="内核空间-用户空间"><a href="#内核空间-用户空间" class="headerlink" title="内核空间 / 用户空间"></a>内核空间 / 用户空间</h3><p>虚拟内存被操作系统划分为两块：内核空间 和 用户空间，为了安全，它们是隔离的。<br>内核空间是内核代码运行的地方，可以调用系统的一切资源；用户空间是用户程序代码运行的地方，不能直接调用系统资源，必须通过系统接口（System Call）才能向内核发出指令。<br>进程运行在内核空间时就处于<strong>内核态</strong>，运行在用户空间时就处于<strong>用户态</strong>，通过系统接口，进程可以从用户空间切换到内核空间。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">str &#x3D; &quot;my string&quot; &#x2F;&#x2F; 用户空间</span><br><span class="line">x &#x3D; x + 2</span><br><span class="line">file.write(str) &#x2F;&#x2F; 切换到内核空间</span><br><span class="line">y &#x3D; x + 4 &#x2F;&#x2F; 切换回用户空间</span><br></pre></td></tr></table></figure>
+<p>上面代码中，第一行和第二行都是简单的赋值运算，在 User Space 执行。第三行需要写入文件，就要切换到 Kernel Space，因为用户空间不能直接写文件，必须通过内核。第四行又是赋值运算，就切换回 User Space。</p>
+<h3 id="过程简述"><a href="#过程简述" class="headerlink" title="过程简述"></a>过程简述</h3><p>整个I/O过程可以划分为两个阶段：I/O调用阶段 和 I/O执行阶段。</p>
+<ul>
+<li>I/O调用阶段 - 进程向内核发起系统调用。</li>
+<li>I/O执行阶段 - 内核执行I/O 并 <em>拷贝数据至进程缓冲区</em> 或 _向进程反馈写成功_。<ul>
+<li>数据准备 - 内核在收到指令后需要做一系列 <em>把数据从I/O设备写到内核缓冲区（读）</em> 或 <em>把进程缓冲区的待写数据替换到内核缓冲区中（写）</em> 的准备工作。</li>
+<li>数据拷贝 - 读过程中，数据准备好后，从内核缓冲区拷贝数据到进程缓冲区；写过程不需要拷贝数据，内核只需在合适时机再将脏页刷入磁盘。</li>
+</ul>
+</li>
+</ul>
+<h2 id="I-O模型"><a href="#I-O模型" class="headerlink" title="I/O模型"></a>I/O模型</h2><p>Richard Stevens 在《<a href="https://www.oreilly.com/library/view/the-sockets-networking/0131411551/" target="_blank" rel="noopener">Unix Network Programming Volume 1, Third Edition: The Sockets Networking API</a>》6.2节“I/O Models”中提出了Unix下可用的5种I/O模型。</p>
+<h3 id="Blocking-I-O"><a href="#Blocking-I-O" class="headerlink" title="Blocking I/O"></a>Blocking I/O</h3><p>阻塞I/O，简称 <strong>BIO</strong>，Blocking I/O，是最常见的I/O模型，默认情况下，所有套接字都是阻塞的。以数据报（UDP）套接字为例：<br><img src="/images/bio.png" alt="alt"></p>
+<p>其中，recvfrom函数视为系统调用，会从在应用进程空间中运行切换到在内核空间中运行，直到数据报到达且被复制到应用进程的缓冲区中或者发生错误（最常见的错误是系统调用被信号中断）才返回。<br><strong>进程在从调用recvfrom开始到它返回的整段时间内是被阻塞的</strong>，recvfrom成功返回后，应用进程开始处理数据报。<br>BIO比较影响应用性能，虽然可以通过多线程来提升，但线程的创建销毁与切换同样消耗系统资源、影响性能。</p>
+<h3 id="Non-Blocking-I-O"><a href="#Non-Blocking-I-O" class="headerlink" title="Non-Blocking I/O"></a>Non-Blocking I/O</h3><p>非阻塞I/O，简称 <strong>NIO</strong>，Non-Blocking I/O，即，内核收到进程发起的系统调用请求后会立即返回，之后进程通过轮询（polling）的方式来不断请求获取处理结果。<br><img src="/images/nio.png" alt="alt"><br>上图中，前几次调用recvfrom时，数据还未准备好，内核立即返回一个EWOULDBLOCK错误；之后再次调用recvfrom时数据报已准备好，并从内核缓冲区复制到进程缓冲区，完成后返回成功。</p>
+<blockquote>
+<p>EWOULDBLOCK - 表示该操作可能被阻塞，其中，E是Error，WOULD BLOCK表示可能被阻塞。</p>
+</blockquote>
+<p>NIO中，进程需要不断地询问内核数据是否就绪，这会耗费大量CPU时间。<br>值得注意的是：BIO中进程（或线程）被阻塞，但不占用CPU，只因一个进程（或线程）只能处理一个任务，比较影响应用性能。</p>
+<h3 id="I-O-Multiplexing"><a href="#I-O-Multiplexing" class="headerlink" title="I/O Multiplexing"></a>I/O Multiplexing</h3><p>I/O多路复用，I/O Multiplexing，Select 是内核提供的系统调用，它支持一次查询多个系统调用的可用状态，当任意一个结果状态可用时就会返回，用户进程再发起一次系统调用进行数据读取。<br>换句话说，NIO中轮询的系统调用，借助 Select，只需要发起一次系统调用就够了。<br><img src="/images/io-multiplexing.png" alt="alt"><br>进程阻塞于select调用，等待数据报套接字变为可读；当select返回套接字可读这一条件时，再调用recvfrom把所读数据报复制到进程缓冲区。<br>相比BIO，select 的优势在于可以等待多个描述符就绪。</p>
+<blockquote>
+<p>与I/O多路复用相对应的是在多线程中使用BIO，每个文件描述符一个线程，这样每个线程都可以自由地阻塞调用recvfrom。</p>
+</blockquote>
+<h3 id="Signal-Driven-I-O"><a href="#Signal-Driven-I-O" class="headerlink" title="Signal-Driven I/O"></a>Signal-Driven I/O</h3><p>信号驱动I/O，Signal-Driven I/O，即，让内核在描述符就绪时发送 <strong>SIGIO信号</strong> 通知应用。<br><img src="/images/sigio.png" alt="alt"><br>通过 sigaction 系统调用安装一个信号处理程序，当数据报准备好读取时，内核就为该进程产生一个SIGIO信号；<br>信号处理程序捕获SIGIO信号并调用recvfrom读取数据报（也可以直接通知应用去调recvfrom），然后通知应用进程开始处理。<br>信号驱动I/O与BIO和NIO最大的区别在于：在I/O执行的数据准备阶段，不会阻塞用户进程。<br>信号驱动I/O有种异步操作的感觉，但在I/O执行的第二阶段（也就是将数据从内核复制到用户空间），用户进程还是被阻塞的。</p>
+<h3 id="Asynchronous-I-O"><a href="#Asynchronous-I-O" class="headerlink" title="Asynchronous I/O"></a>Asynchronous I/O</h3><p>异步I/O，简称 <strong>AIO</strong>，Asynchronous I/O，由 POSIX标准 定义（POSIX标准 定义了aio_*系列异步I/O函数）。</p>
+<blockquote>
+<p>POSIX，Portable Operating System Interface of Unix，可移植操作系统接口，X 表明其对 Unix API 的传承。<br>POSIX标准由IEEE（电气和电子工程师协会）发布，是IEEE为要在各种UNIX操作系统上运行软件而定义的一系列API标准的总称。</p>
+</blockquote>
+<p><img src="/images/aio.png" alt="alt"><br>异步I/O真正实现了I/O全流程的非阻塞：进程发出系统调用后立即返回，内核在数据准备完成后将数据拷贝到进程缓冲区，然后发送信号告诉进程I/O操作执行完毕。<br>与信号驱动I/O相比，异步I/O是由内核在I/O操作执行完成后通知应用。</p>
+<h2 id="I-O多路复用实现机制"><a href="#I-O多路复用实现机制" class="headerlink" title="I/O多路复用实现机制"></a>I/O多路复用实现机制</h2><p>select、poll、epoll都是I/O多路复用的实现机制。</p>
+<h3 id="select"><a href="#select" class="headerlink" title="select"></a>select</h3><h4 id="过程简述-1"><a href="#过程简述-1" class="headerlink" title="过程简述"></a>过程简述</h4><ul>
+<li>应用中维护待检查的FD_SET（Socket集合），然后调用 select 函数。</li>
+<li>内核逐个检测FD_SET中的Socket，若某个Socket状态有变化，则填入内部分配的一个数组，待所有Socket检测完成，再将此数组拷贝到对应的FD_SET，然后返回。</li>
+<li>应用从返回的 select 函数获取有对应状态变化的FD_SET，然后对这些Socket进行IO操作。</li>
+</ul>
+<p>select 会阻塞并监视三类（读/写/异常）文件描述符，等有数据（读就绪列表/写就绪列表/异常列表）或超时，就会返回。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">select</span><span class="params">(<span class="keyword">int</span> nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout)</span></span>;</span><br></pre></td></tr></table></figure>
+<p>其中，nfds 是 readfds、writefds、exceptfds 中编号最大的那个文件描述符加1（加1是因为文件描述符从0开始计数），readfds 存放读就绪的文件描述符列表，writefds 存放写就绪的文件描述符列表，exceptfds 存放出现异常的文件描述符列表。timeout 为最大阻塞时间长度（精确到毫秒）…<a href="https://man7.org/linux/man-pages/man2/select.2.html" target="_blank" rel="noopener">&gt;&gt;</a></p>
+<h4 id="优缺点"><a href="#优缺点" class="headerlink" title="优缺点"></a>优缺点</h4><p>优点：有较多系统实现了 select 接口，跨平台更容易。<br>缺点：对监听的文件描述符有上限（一般是1024）；应用需维护FD_SET，并与内核来回传递，复制开销大；内核轮询扫描待检测FD_SET，占用较多CPU时间，效率低。</p>
+<blockquote>
+<p>select 中，为什么监听的文件描述符有上限？<br>FD_SET 是个 Bitmap，每个 bit 都表示对应的描述符是否监听（即使相应位置的描述符不需要监听，在 FD_SET 里也有它的 bit 存在），最多 nfds 个 bit（nfds 即代表了 fd_set 的长度：<code>fd_set[0] ~ fd_set[nfds - 1]</code>）。<br>而 Linux 系统中，文件描述符是有上限的，Soft limit 默认为1024。<br>虽然可以改 Soft limit（<code>ulimit -n &lt;文件数目&gt;</code> 或 修改 /etc/security/limits.conf 文件），但 select 中的 FD_SETSIZE 也默认设置了1024，还得重新编译内核。</p>
+</blockquote>
+<h3 id="poll"><a href="#poll" class="headerlink" title="poll"></a>poll</h3><p>本质上与 select 一致，区别是使用链表存储FD，解决了最大文件描述符的限制，但内核依然要遍历所有FD且同样需要复制数据。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">poll</span><span class="params">(struct pollfd *fds, <span class="keyword">nfds_t</span> nfds, <span class="keyword">int</span> timeout)</span></span>;</span><br></pre></td></tr></table></figure>
+<p>nfds 是 fds 数组的长度，struct pollfd 定义如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">pollfd</span> &#123;</span></span><br><span class="line">    <span class="keyword">int</span> fd; <span class="comment">/* file descriptor */</span></span><br><span class="line">    short events; <span class="comment">/* requested events */</span></span><br><span class="line">    short revents; <span class="comment">/* returned events */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>可以看出，fds 的核心还是文件描述符，通过 events 和 revents 来标识已变化的监听事件。<br><a href="https://man7.org/linux/man-pages/man2/poll.2.html" target="_blank" rel="noopener">https://man7.org/linux/man-pages/man2/poll.2.html</a></p>
+<h3 id="epoll"><a href="#epoll" class="headerlink" title="epoll"></a>epoll</h3><p>epoll 的核心是 Event-Driven（事件驱动）模型，即，注册监听事件，通过回调维护就绪事件队列，以便在系统调用时返回给应用，进而完成I/O操作。<br>三个核心函数：</p>
+<ul>
+<li><code>epoll_create()</code> - 初始化，构建 epoll 对象，用于存储 fd 和 就绪事件。</li>
+<li><code>epoll_ctl()</code> - 增删改 epoll 对象中的 fd 并注册监听事件。</li>
+<li><code>epoll_wait()</code> - 阻塞等待以获取就绪事件，以便应用继续完成I/O操作。</li>
+</ul>
+<h4 id="函数定义"><a href="#函数定义" class="headerlink" title="函数定义"></a>函数定义</h4><h5 id="epoll-create"><a href="#epoll-create" class="headerlink" title="epoll_create"></a>epoll_create</h5><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">epoll_create</span><span class="params">(<span class="keyword">int</span> <span class="built_in">size</span>)</span></span>;</span><br></pre></td></tr></table></figure>
+<p><a href="https://man7.org/linux/man-pages/man2/epoll_create.2.html" target="_blank" rel="noopener">https://man7.org/linux/man-pages/man2/epoll_create.2.html</a><br>返回一个 epoll 文件描述符（epfd），size 用于指定最大监听的 <code>fd + 1</code> 的值。<br>epfd 会占用一个 fd 值，若不再使用，必须调用 <code>close()</code> 关闭，否则可能导致 fd 被耗尽。<br>当所有引用 epfd 的文件描述符均已关闭，内核也会销毁此对象并释放相关联资源。</p>
+<h5 id="epoll-create1"><a href="#epoll-create1" class="headerlink" title="epoll_create1"></a>epoll_create1</h5><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">epoll_create1</span><span class="params">(<span class="keyword">int</span> flags)</span></span>;</span><br></pre></td></tr></table></figure>
+<p><a href="https://man7.org/linux/man-pages/man2/epoll_create1.2.html" target="_blank" rel="noopener">https://man7.org/linux/man-pages/man2/epoll_create1.2.html</a><br>epoll_create1 扩展了 epoll_create 的功能，当 flags = 0 时，两者等价。<br>当 flags = EPOLL_CLOEXEC 时，在进程替换映像（exec* 函数组，用于把当前进程替换为一个新进程，新进程与原进程有相同的PID；实际上是调用 fork 复制一个新的子进程，利用 exec* 系统调用将新产生的子进程完全替换父进程）的时候会关闭这个文件描述符，这样新的映像中就无法对这个文件描述符进行操作，用于多进程及映像替换的情况。<br>返回值：成功时返回一个文件描述符；出错时返回 -1。</p>
+<h5 id="epoll-ctl"><a href="#epoll-ctl" class="headerlink" title="epoll_ctl"></a>epoll_ctl</h5><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">epoll_ctl</span><span class="params">(<span class="keyword">int</span> epfd, <span class="keyword">int</span> op, <span class="keyword">int</span> fd, struct epoll_event *event)</span></span>;</span><br></pre></td></tr></table></figure>
+<p><a href="https://man7.org/linux/man-pages/man2/epoll_ctl.2.html" target="_blank" rel="noopener">https://man7.org/linux/man-pages/man2/epoll_ctl.2.html</a><br>op，要执行的命令：EPOLL_CTL_ADD - 向 epfd 添加一个连接 socket 的文件描述符；EPOLL_CTL_MOD - 改变 epfd 中一个文件描述符的监听事件；EPOLL_CTL_DEL - 移除 epfd 中一个文件描述符。<br>fd，要操作的文件描述符。<br>epoll_event 结构：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="keyword">union</span> epoll_data &#123;</span><br><span class="line">    <span class="keyword">void</span> *ptr;</span><br><span class="line">    <span class="keyword">int</span> fd;</span><br><span class="line">    <span class="keyword">uint32_t</span> u32;</span><br><span class="line">    <span class="keyword">uint64_t</span> u64;</span><br><span class="line">&#125; <span class="keyword">epoll_data_t</span>;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">epoll_event</span> &#123;</span></span><br><span class="line">    <span class="keyword">uint32_t</span> events; <span class="comment">/* Epoll events */</span></span><br><span class="line">    <span class="keyword">epoll_data_t</span> data; <span class="comment">/* User data variable */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>events 为以下零个或多个可用事件进行的或运算：</p>
+<ul>
+<li>EPOLLIN - 对应的文件描述有可以读取的内容。</li>
+<li>EPOLLOUT - 对应的文件描述符可以写入。</li>
+<li>EPOLLRDHUP - 写到一半的时候连接断开。</li>
+<li>EPOLLPRI - 发生异常情况，eg. TCP连接中收到了带外数据。</li>
+<li>EPOLLET - 设置 epfd 中 fd 的事件触发机制为边缘触发（Edge Trigger），默认为水平触发（Level Trigger）。</li>
+<li>EPOLLERR - 对应的文件描述符发生错误。</li>
+<li>EPOLLHUP - 对应的文件描述符被挂断。</li>
+<li>EPOLLONESHOT - 只监听一次事件，当监听完这次事件之后，如果还想继续监听，需要再次把 socket 对应的 fd 加入到 epfd 里。</li>
+<li>EPOLLWAKEUP（Linux 3.5之后新增） - 如果 EPOLLONESHOT 和 EPOLLET 清除了，并且进程拥有 CAP_BLOCK_SUSPEND 权限，那么此标志能够保证事件在挂起或者处理的时候，系统不会挂起或休眠。</li>
+<li>EPOLLEXCLUSIVE（Linux 4.5之后新增） - 保证一个事件发生时只有一个线程会被唤醒，以避免多侦听下的“惊群”问题；不过任一时候只能有一个工作线程调用 accept，限制了真正并行的吞吐量。</li>
+</ul>
+<h5 id="epoll-wait"><a href="#epoll-wait" class="headerlink" title="epoll_wait"></a>epoll_wait</h5><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">epoll_wait</span><span class="params">(<span class="keyword">int</span> epfd, struct epoll_event *events, <span class="keyword">int</span> maxevents, <span class="keyword">int</span> timeout)</span></span>;</span><br></pre></td></tr></table></figure>
+<p><a href="https://man7.org/linux/man-pages/man2/epoll_wait.2.html" target="_blank" rel="noopener">https://man7.org/linux/man-pages/man2/epoll_wait.2.html</a><br>events，从内核得到的事件集合。<br>maxevents，告诉内核 events 的大小，maxevents 的值不能大于 <code>epoll_create()</code> 的 size。<br>timeout，超时时间（毫秒，0 立即返回，-1 永久阻塞）。<br>返回值：需要处理的事件数量，返回 0 表示已超时。</p>
+<h4 id="基本用法"><a href="#基本用法" class="headerlink" title="基本用法"></a>基本用法</h4><p><a href="https://man7.org/linux/man-pages/man7/epoll.7.html" target="_blank" rel="noopener">https://man7.org/linux/man-pages/man7/epoll.7.html</a> 提供了使用示例。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> MAX_EVENTS 10</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">epoll_event</span> <span class="title">ev</span>, <span class="title">events</span>[<span class="title">MAX_EVENTS</span>];</span></span><br><span class="line"><span class="keyword">int</span> listen_sock, conn_sock, nfds, epollfd;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* Code to set up listening socket, 'listen_sock',</span></span><br><span class="line"><span class="comment">  (socket(), bind(), listen()) omitted */</span></span><br><span class="line"></span><br><span class="line">epollfd = epoll_create1(<span class="number">0</span>);</span><br><span class="line"><span class="keyword">if</span> (epollfd == <span class="number">-1</span>) &#123;</span><br><span class="line">    perror(<span class="string">"epoll_create1"</span>);</span><br><span class="line">    <span class="built_in">exit</span>(EXIT_FAILURE);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">ev.events = EPOLLIN;<span class="comment">// 监听 listen_sock 的连接请求</span></span><br><span class="line">ev.data.fd = listen_sock;</span><br><span class="line"><span class="keyword">if</span> (epoll_ctl(epollfd, EPOLL_CTL_ADD, listen_sock, &amp;ev) == <span class="number">-1</span>) &#123;<span class="comment">// 把 listen_sock 添加到 epollfd 里</span></span><br><span class="line">    perror(<span class="string">"epoll_ctl: listen_sock"</span>);</span><br><span class="line">    <span class="built_in">exit</span>(EXIT_FAILURE);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> (;;) &#123;</span><br><span class="line">    nfds = epoll_wait(epollfd, events, MAX_EVENTS, <span class="number">-1</span>);</span><br><span class="line">    <span class="keyword">if</span> (nfds == <span class="number">-1</span>) &#123;</span><br><span class="line">        perror(<span class="string">"epoll_wait"</span>);</span><br><span class="line">        <span class="built_in">exit</span>(EXIT_FAILURE);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (n = <span class="number">0</span>; n &lt; nfds; ++n) &#123;</span><br><span class="line">        <span class="keyword">if</span> (events[n].data.fd == listen_sock) &#123;<span class="comment">// 如果事件对应的 fd 为 listen_sock, 说明已经有客户端请求连接 listen_sock</span></span><br><span class="line">            <span class="comment">// 建立连接, 创建 conn_sock</span></span><br><span class="line">            conn_sock = accept(listen_sock, (struct sockaddr *) &amp;addr, &amp;addrlen);</span><br><span class="line">            <span class="keyword">if</span> (conn_sock == <span class="number">-1</span>) &#123;</span><br><span class="line">                perror(<span class="string">"accept"</span>);</span><br><span class="line">                <span class="built_in">exit</span>(EXIT_FAILURE);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">// 把 conn_sock 设置为非阻塞</span></span><br><span class="line">            setnonblocking(conn_sock);</span><br><span class="line">            <span class="comment">// 监听 conn_sock 是否有内容可读取(即, 客户端发送数据过来), 同时设置为边缘触发模式</span></span><br><span class="line">            ev.events = EPOLLIN | EPOLLET;</span><br><span class="line">            ev.data.fd = conn_sock;</span><br><span class="line">            <span class="comment">// 把 conn_sock 添加到 epollfd 里</span></span><br><span class="line">            <span class="keyword">if</span> (epoll_ctl(epollfd, EPOLL_CTL_ADD, conn_sock, &amp;ev) == <span class="number">-1</span>) &#123;</span><br><span class="line">                perror(<span class="string">"epoll_ctl: conn_sock"</span>);</span><br><span class="line">                <span class="built_in">exit</span>(EXIT_FAILURE);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// 进行其他操作</span></span><br><span class="line">            do_use_fd(events[n].data.fd);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="核心设计"><a href="#核心设计" class="headerlink" title="核心设计"></a>核心设计</h4><p>在 epoll 文件系统里新建一个文件，此文件对应 eventpoll 结构体。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">eventpoll</span> &#123;</span></span><br><span class="line">　　...</span><br><span class="line">　　<span class="comment">/* 红黑树的根节点 */</span></span><br><span class="line">　　<span class="class"><span class="keyword">struct</span> <span class="title">rb_root</span> <span class="title">rbr</span>;</span></span><br><span class="line">　　<span class="comment">/* 双向链表 rdllist 保存就绪事件 */</span></span><br><span class="line">　　<span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">rdllist</span>;</span></span><br><span class="line">　　...</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>在内核缓冲区里构建一棵红黑树，用于存储所有添加到 epoll 的事件。<br>事件都会与设备（eg. 网卡）驱动程序建立回调关系，相应事件发生时会执行回调函数 <code>ep_poll_callback</code>。<br>回调函数中把就绪事件添加到 rdllist 双向链表。</p>
+<p>每一个事件都对应一个 epitem 结构体。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">epitem</span> &#123;</span></span><br><span class="line">    ...</span><br><span class="line">　　<span class="comment">/* 红黑树节点 */</span></span><br><span class="line">　　<span class="class"><span class="keyword">struct</span> <span class="title">rb_node</span> <span class="title">rbn</span>;</span></span><br><span class="line">　　<span class="comment">/* 双向链表节点 */</span></span><br><span class="line">　　<span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">rdllink</span>;</span></span><br><span class="line">　　<span class="comment">/* 事件句柄等信息 */</span></span><br><span class="line">　　<span class="class"><span class="keyword">struct</span> <span class="title">epoll_filefd</span> <span class="title">ffd</span>;</span></span><br><span class="line">　　<span class="comment">/* 指向其所属的 eventpoll 对象 */</span></span><br><span class="line">　　<span class="class"><span class="keyword">struct</span> <span class="title">eventpoll</span> *<span class="title">ep</span>;</span></span><br><span class="line">　　<span class="comment">/* 监听的事件 */</span></span><br><span class="line">　　<span class="class"><span class="keyword">struct</span> <span class="title">epoll_event</span> <span class="title">event</span>;</span></span><br><span class="line">　　...</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>当调用 epoll_wait 检查是否有就绪事件时，只需检查 eventpoll 对象中的 rdllist 是否有 epitem 元素；<br>若 rdllist 不为空，则复制事件到进程缓冲区（使用 mmap 提升效率），并返回事件数量。<br>红黑树对查询、新增、删除的效率极高，所以通过 epoll_ctl 向 epoll 对象增删改事件时非常快。</p>
+<blockquote>
+<p>mmap 是目前 Linux 进程间通信中传递最快、消耗最小、传递数据过程不涉及系统调用的方法，这极大降低了大量FD时数据拷贝的消耗。</p>
+</blockquote>
+<p><img src="/images/io-multiplexing-principle.png" alt="alt"></p>
+<h4 id="触发模式"><a href="#触发模式" class="headerlink" title="触发模式"></a>触发模式</h4><p>epoll 有两种触发模式：边缘触发（Edge Trigger），简称 ET；水平触发（Level Trigger），简称 LT；默认为 LT。</p>
+<ul>
+<li>LT 模式<br>只要某个文件描述符还有数据可读，则每次 epoll_wait 都会返回此文件描述符的事件，提醒应用程序去操作。</li>
+<li>ET 模式<br>在检测到有 I/O 事件时，通过 epoll_wait 调用会得到就绪事件的文件描述符，对于每一个就绪事件的文件描述符，如可读，应用程序需要以 Non-Blocking 方式将该文件描述符一直读完（非阻塞情况下，没有数据可读时，<code>read()</code> 会返回 EAGAIN），否则下次 epoll_wait 不会返回该事件，直到该文件描述符再次可读时才通知。</li>
+</ul>
+<blockquote>
+<p>为什么需要 ET 模式？<br>如果你只关心部分就绪文件描述符，但每次调用 epoll_wait 都会返回大量无关的事件，那么，程序会额外增加很多无效的遍历判断。<br>而 ET 模式下，当被监控的文件描述符上有可读写事件发生时，epoll_wait 才会返回给处理程序去读写。<br>但，如果当次通知没有把数据全部读写完（eg. 读写缓冲区太小），那么就有可能导致数据丢失。</p>
+</blockquote>
+<h4 id="惊群问题"><a href="#惊群问题" class="headerlink" title="惊群问题"></a>惊群问题</h4><p>当多个进程（或多个线程）同时阻塞等待（休眠状态）一个事件的发生，如果某个时间点等待的这个事件发生了，那么它就会唤醒所有等待的进程（线程），但是最终只能有一个进程（线程）获得资源，对事件进行处理，而其他进程（线程）只能重新进入休眠状态，这种现象就叫做惊群（Thundering herd）效应。</p>
+<p>惊群效应带来哪些问题？</p>
+<ul>
+<li>最终只能有一个线程获得资源，所以理想情况下只需唤醒一个线程，而唤醒多个线程导致了不必要的线程调度，造成系统开销。</li>
+<li>其次，为了确保只有一个线程得到资源，需要对资源进行加锁保护。<br>eg. Nginx 通过锁机制解决惊群问题。</li>
+</ul>
+<p>单线程处理 epoll_wait 是没有惊群问题的，但引入多线程就会面临惊群问题，针对不同的多线程处理I/O场景有不同的解决方式：</p>
+<ul>
+<li>fd 注册在一个 epfd 上，多进程（可能是通过 fork 产生的，eg. Nginx 的 Worker 进程就是通过 Master 进程 fork 出来的，Master 和 Worker 是父子进程）共享 fd，一起处理 fd 的 I/O 事件。<br>就绪事件可能会将父子进程都唤醒，即，出现惊群。<br>解决方式：使用 ET 模式，即，fd 的就绪事件只通知一次，这样保证了每次只会唤醒一个进程去处理事件。</li>
+<li>fd 注册到多个不同的 epfd 上，且每个 epfd 由不同线程负责调用 epoll_wait，这些线程共同处理 fd 的 I/O 事件。<br>就绪事件可能会在多个 epfd 上将阻塞在 epoll_wait 的线程都唤醒，于是出现惊群。<br>解决方式：epoll_wait 时带上 EPOLLEXCLUSIVE 参数，保证同一个 fd 产生的 I/O 事件只唤醒一个线程来处理；此方式同时解决了第一种场景的惊群问题。</li>
+</ul>
+<p>实际中，解决方案远没有上面描述的两种方式来的简单，不过Linux内核（2.6+）基本为我们解决了常见的惊群问题（通过互斥信号量？）。</p>
+<h3 id="kqueue"><a href="#kqueue" class="headerlink" title="kqueue"></a>kqueue</h3><p>kqueue 是 MacOS 和 FreeBSD 下的实现。</p>
+<h2 id="实际应用"><a href="#实际应用" class="headerlink" title="实际应用"></a>实际应用</h2><p>epoll 在实际中有着广泛的应用。<br>我们能从众多开源项目中发现它的身影，eg. Redis、Nginx、Node.js、Swoole 以及 Java 中的 NIO（New I/O）等等。</p>
+<h2 id="几个问题"><a href="#几个问题" class="headerlink" title="几个问题"></a>几个问题</h2><h3 id="Socket-为什么称-套接字？"><a href="#Socket-为什么称-套接字？" class="headerlink" title="Socket 为什么称 套接字？"></a>Socket 为什么称 套接字？</h3><p>知乎上有个「<a href="https://www.zhihu.com/question/21383903" target="_blank" rel="noopener">Socket 为什么要翻译成套接字？</a>」的话题，通过下面这句话（原样摘录），大体理解下。</p>
+<blockquote>
+<p>Socket 提供一种供应用程序访问通信协议的操作系统调用，并且通过将 Socket 与 Unix 系统文件描述符相整合，使得网络读写数据（或者服务调用）和读写本地文件一样容易。很显然，Socket 已经离“插座”越来越远了，已经完全不再是硬件上的物件，而是一序列的“指令”，按汉语的理解，已经具备了“套接”（建立网络通讯或进程间通讯）和“字”（可交互的有序指令串）的概念。</p>
+</blockquote>
+<h3 id="异步一定是多线程吗？"><a href="#异步一定是多线程吗？" class="headerlink" title="异步一定是多线程吗？"></a>异步一定是多线程吗？</h3><p>应用层面的多线程是模拟实现异步的一种方法，实际上，在软件系统中，异步的真正实现需要底层操作系统的支持。</p>
+<blockquote>
+<p>Linux AIO（<strong>libaio</strong>）利用了 CPU 和 IO 设备异步工作的特性，与同步 IO 相比，很大程度上减少了 CPU 资源的浪费。<br>而 POSIX AIO（<strong>glibc</strong>） 利用了线程与线程之间的异步工作特性，在用户线程中实现 IO 的异步操作。<br>所以，libaio 是 I/O系统调用层面（内核态）的异步，而 glibc 是进程通信层面（用户态）的异步。</p>
+</blockquote>
+<p>简单讲，多线程（glibc/…）、多路复用（select/poll/epoll）、异步I/O（libaio）是实现异步的常见手段。</p>
+<h3 id="为什么说-epoll-是-同步非阻塞的？"><a href="#为什么说-epoll-是-同步非阻塞的？" class="headerlink" title="为什么说 epoll 是 同步非阻塞的？"></a>为什么说 epoll 是 同步非阻塞的？</h3><p>这其实是在不同层面上的理解：<br>非阻塞 - 体现在I/O请求后把 Socket 写到缓冲区，底层硬件实现了DMA机制，才能够注册回调函数，这之后进程不需要阻塞等待。<br>同步 - epoll 本身要阻塞在那里等待 Socket，也就是同步I/O。</p>
+<h3 id="为什么分-监听socket-和-连接socket？"><a href="#为什么分-监听socket-和-连接socket？" class="headerlink" title="为什么分 监听socket 和 连接socket？"></a>为什么分 监听socket 和 连接socket？</h3><p>先来看看 Socket 建立连接的过程：</p>
+<ul>
+<li>客户端<br><code>socket()</code> - 创建出 active_socket_fd（client_socket_fd）。<br><code>bind()</code> - 把 active_socket_fd 与 ip,port 绑定起来。<br><code>connect()</code> - client_socket_fd 主动请求服务端的 listen_socket_fd。<br><code>read() / write()</code> - 读/写 socket io。<br><code>close()</code> - 关闭 socket_fd。</li>
+<li>服务端<br><code>socket()</code> - 创建出 active_socket_fd。<br><code>bind()</code> - 把 active_socket_fd 与 ip,port 绑定起来。<br><code>listen()</code> - active_socket_fd -&gt; listen_socket_fd，等待客户端的 client_socket_fd 来请求连接。<br><code>accept()</code> - listen_socket_fd -&gt; connect_socket_fd，创建 连接socket，用于建立连接后的读写数据。<br><code>read() / write()</code> - 读/写 socket io。<br><code>close()</code> - 关闭 socket_fd。</li>
+</ul>
+<p>监听socket（listen_socket_fd）存在于服务端的整个生命周期，不需要为每个连接都创建一个新的监听socket。<br>连接socket（connect_socket_fd）是客户端与服务端之间已经建立起连接的一个端点，服务端每次接受连接请求都会创建一个新的连接socket，它的生命周期是客户端请求服务端的时间范围。<br>有了 listen_socket_fd 和 connect_socket_fd，就可以用 listen_socket_fd 负责响应客户端的请求，而每次创建新的 connect_socket_fd 专门负责当次连接的数据读写。<br>总的来说，是为了分层协作，提高服务端性能。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><p><a href="https://www.zhihu.com/question/19732473" target="_blank" rel="noopener">怎样理解阻塞非阻塞与同步异步的区别</a><br><a href="http://www.ruanyifeng.com/blog/2016/12/user_space_vs_kernel_space.html" target="_blank" rel="noopener">User space 与 Kernel space</a><br><a href="https://blog.csdn.net/oZhuZhiYuan/article/details/73411759" target="_blank" rel="noopener">计算机文件读写原理</a><br>《UNIX网络编程卷1：套接字联网API（第3版）》6.2节<br><a href="https://zhuanlan.zhihu.com/p/127148459" target="_blank" rel="noopener">深入学习理解 IO 多路复用</a><br><a href="https://zhuanlan.zhihu.com/p/63179839" target="_blank" rel="noopener">如果这篇文章说不清epoll的本质，那就过来掐死我吧</a><br><a href="https://www.cnblogs.com/liangjf/p/9900928.html" target="_blank" rel="noopener">为什么有监听socket和连接socket</a><br><a href="https://blog.csdn.net/daaikuaichuan/article/details/83862311" target="_blank" rel="noopener">epoll原理详解及epoll反应堆模型</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/IO%E6%A8%A1%E5%9E%8B/" rel="tag"># IO模型</a>
+              <a href="/tags/EPOLL/" rel="tag"># EPOLL</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/07/16/character-encoding/" rel="prev" title="字符编码那点事">
+      <i class="fa fa-chevron-left"></i> 字符编码那点事
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+        </div>
+        
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Meegle</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/valine@1/dist/Valine.min.js', () => {
+    new Valine(Object.assign({
+      el  : '#valine-comments',
+      path: location.pathname,
+    }, {"enable":true,"appId":"0DFjQujwMejBjMdRN3BXBbV4","appKey":"K5U8WSiJMA4o3T1OR1k1J23J","placeholder":"写下你的评论...","avatar":"mm","meta":["nick","mail","link"],"pageSize":10,"language":"zh-cn","visitor":true,"comment_count":true,"recordIP":false,"serverURLs":null}
+    ));
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>
