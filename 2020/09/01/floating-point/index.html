@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.ico">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"meegle.github.io","root":"/","scheme":"Gemini","version":"8.0.0-rc.4","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="一个常见问题123$f1 &#x3D; 0.58;$f2 &#x3D; 0.50;echo (int)(($f1 - $f2) * 100); 结果为什么是 7 而不是 8，PHP出BUG了？我们换 Java 和 Go 试试。 123float f1 &#x3D; 0.58f;float f2 &#x3D; 0.50f;System.out.println((int)((f1 - f2) * 100)); 123var f1 float">
+<meta property="og:type" content="article">
+<meta property="og:title" content="从一个浮点数运算说起">
+<meta property="og:url" content="http://meegle.github.io/2020/09/01/floating-point/index.html">
+<meta property="og:site_name" content="MeeGle&#39;s Notes">
+<meta property="og:description" content="一个常见问题123$f1 &#x3D; 0.58;$f2 &#x3D; 0.50;echo (int)(($f1 - $f2) * 100); 结果为什么是 7 而不是 8，PHP出BUG了？我们换 Java 和 Go 试试。 123float f1 &#x3D; 0.58f;float f2 &#x3D; 0.50f;System.out.println((int)((f1 - f2) * 100)); 123var f1 float">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://meegle.github.io/images/calculation.png">
+<meta property="og:image" content="http://meegle.github.io/images/floating-point.png">
+<meta property="og:image" content="http://meegle.github.io/images/overflow.png">
+<meta property="og:image" content="http://meegle.github.io/images/ieee754.png">
+<meta property="article:published_time" content="2020-09-01T13:20:55.000Z">
+<meta property="article:modified_time" content="2020-09-01T15:40:46.552Z">
+<meta property="article:author" content="Meegle">
+<meta property="article:tag" content="浮点数">
+<meta property="article:tag" content="IEEE754">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://meegle.github.io/images/calculation.png">
+
+<link rel="canonical" href="http://meegle.github.io/2020/09/01/floating-point/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>从一个浮点数运算说起 | MeeGle's Notes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <main class="main">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+        <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+        <span class="toggle-line toggle-line-first"></span>
+        <span class="toggle-line toggle-line-middle"></span>
+        <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">MeeGle's Notes</h1>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <section class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#一个常见问题"><span class="nav-number">1.</span> <span class="nav-text">一个常见问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#无符号数-和-有符号数"><span class="nav-number">2.</span> <span class="nav-text">无符号数 和 有符号数</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#原码"><span class="nav-number">2.1.</span> <span class="nav-text">原码</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#补码"><span class="nav-number">2.2.</span> <span class="nav-text">补码</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#反码"><span class="nav-number">2.3.</span> <span class="nav-text">反码</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#移码"><span class="nav-number">2.4.</span> <span class="nav-text">移码</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#定点数"><span class="nav-number">3.</span> <span class="nav-text">定点数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#浮点数"><span class="nav-number">4.</span> <span class="nav-text">浮点数</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#表示格式"><span class="nav-number">4.1.</span> <span class="nav-text">表示格式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#上溢-amp-下溢"><span class="nav-number">4.2.</span> <span class="nav-text">上溢 &amp; 下溢</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#IEEE754标准"><span class="nav-number">4.3.</span> <span class="nav-text">IEEE754标准</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#真值公式"><span class="nav-number">4.3.1.</span> <span class="nav-text">真值公式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#特殊值定义"><span class="nav-number">4.3.2.</span> <span class="nav-text">特殊值定义</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#加减运算"><span class="nav-number">5.</span> <span class="nav-text">加减运算</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#定点数-1"><span class="nav-number">5.1.</span> <span class="nav-text">定点数</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#基本公式"><span class="nav-number">5.1.1.</span> <span class="nav-text">基本公式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#溢出判断"><span class="nav-number">5.1.2.</span> <span class="nav-text">溢出判断</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#浮点数-1"><span class="nav-number">5.2.</span> <span class="nav-text">浮点数</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#最初的问题"><span class="nav-number">6.</span> <span class="nav-text">最初的问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#几个问题"><span class="nav-number">7.</span> <span class="nav-text">几个问题</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么补码可以表示的最小真值是-2n-1？"><span class="nav-number">7.1.</span> <span class="nav-text">为什么补码可以表示的最小真值是 -2n-1？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么要用移码来表示阶码？"><span class="nav-number">7.2.</span> <span class="nav-text">为什么要用移码来表示阶码？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何理解原码表示的规格化浮点数范围？"><span class="nav-number">7.3.</span> <span class="nav-text">如何理解原码表示的规格化浮点数范围？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#理解浮点数的规格化表示"><span class="nav-number">7.4.</span> <span class="nav-text">理解浮点数的规格化表示</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#浮点数可以精准表示-0-吗，如何理解-机器零？"><span class="nav-number">7.5.</span> <span class="nav-text">浮点数可以精准表示 0 吗，如何理解 机器零？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#定点数和浮点数的表示示例"><span class="nav-number">7.6.</span> <span class="nav-text">定点数和浮点数的表示示例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么-IEEE754-中，32位浮点数的阶码偏移量是-127-而不是-128？"><span class="nav-number">7.7.</span> <span class="nav-text">为什么 IEEE754 中，32位浮点数的阶码偏移量是 127 而不是 128？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#IEEE754浮点数表示示例"><span class="nav-number">7.8.</span> <span class="nav-text">IEEE754浮点数表示示例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#既然-0-58-是无法精确存储的，为什么程序能精确输出-0-58？"><span class="nav-number">7.9.</span> <span class="nav-text">既然 0.58 是无法精确存储的，为什么程序能精确输出 0.58？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#常见面试题"><span class="nav-number">8.</span> <span class="nav-text">常见面试题</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么不要用-float-double-存储金额？"><span class="nav-number">8.1.</span> <span class="nav-text">为什么不要用 float &#x2F; double 存储金额？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考资料"><span class="nav-number">9.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </section>
+      <!--/noindex-->
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Meegle"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">Meegle</p>
+  <div class="site-description" itemprop="description">Just do it!</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">6</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">9</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </section>
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </header>
+
+      
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+  <a href="https://github.com/meegle" class="github-corner" title="Follow me on GitHub" aria-label="Follow me on GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a>
+
+<noscript>
+  <div id="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+      <div class="main-inner">
+        
+
+        <div class="content post posts-expand">
+          
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://meegle.github.io/2020/09/01/floating-point/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Meegle">
+      <meta itemprop="description" content="Just do it!">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="MeeGle's Notes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          从一个浮点数运算说起
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-09-01 21:20:55 / 修改时间：23:40:46" itemprop="dateCreated datePublished" datetime="2020-09-01T21:20:55+08:00">2020-09-01</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/" itemprop="url" rel="index"><span itemprop="name">基础知识</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="一个常见问题"><a href="#一个常见问题" class="headerlink" title="一个常见问题"></a>一个常见问题</h2><figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$f1 = <span class="number">0.58</span>;</span><br><span class="line">$f2 = <span class="number">0.50</span>;</span><br><span class="line"><span class="keyword">echo</span> (int)(($f1 - $f2) * <span class="number">100</span>);</span><br></pre></td></tr></table></figure>
+<p>结果为什么是 7 而不是 8，PHP出BUG了？我们换 Java 和 Go 试试。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">float</span> f1 = <span class="number">0.58f</span>;</span><br><span class="line"><span class="keyword">float</span> f2 = <span class="number">0.50f</span>;</span><br><span class="line">System.out.println((<span class="keyword">int</span>)((f1 - f2) * <span class="number">100</span>));</span><br></pre></td></tr></table></figure>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> f1 <span class="keyword">float32</span> = <span class="number">0.58</span></span><br><span class="line"><span class="keyword">var</span> f2 <span class="keyword">float32</span> = <span class="number">0.50</span></span><br><span class="line">fmt.Println((<span class="keyword">int</span>)((f1 - f2) * <span class="number">100</span>))</span><br></pre></td></tr></table></figure>
+<p>结果也都是7。<br>看来这是个“通病”。要弄清楚原因，我们得先回顾下以前学的基础知识。<br><img src="/images/calculation.png" alt="alt"></p>
+<a id="more"></a>
+
+<h2 id="无符号数-和-有符号数"><a href="#无符号数-和-有符号数" class="headerlink" title="无符号数 和 有符号数"></a>无符号数 和 有符号数</h2><p>计算机中参与运算的数有两大类：无符号数 和 有符号数。<br>无符号数：没有符号位，寄存器中的每一位都用来存放数值，表示范围为 <code>0 ~ 2<sup>n</sup> - 1</code>。<br>有符号数：最高位为符号位，0表示正，1表示负，其余为数值位，表示范围为 <code>-2<sup>n-1</sup> ~ +(2<sup>n-1</sup> - 1)</code>（补码表示）。<br>eg. 机器字长（即，寄存器的位数）为 32 位，则无符号数表示范围为 <code>0 ~ 2<sup>32</sup> - 1</code>，有符号数表示范围为 <code>-2<sup>31</sup> ~ +(2<sup>31</sup> - 1)</code>。</p>
+<blockquote>
+<p>有符号数中，把符号“数字化”的数称为<strong>机器数</strong>，而把带“+”或“-”符号的数称为<strong>真值</strong>。</p>
+</blockquote>
+<p>符号位如何参与运算？计算机规定了几种符号位和数值位的编码方式：原码、补码、反码、移码。</p>
+<h3 id="原码"><a href="#原码" class="headerlink" title="原码"></a>原码</h3><p>符号位为0表示正数，符号位为1表示负数，eg. 1表示为0001，-1表示为1001。<br>为了区别整数和小数，约定整数的符号位与数值位之间用逗号隔开，小数的符号位与数值位之间用小数点隔开。<br>eg. +0.75（十进制）表示为<code>0.11</code>（二进制，<code>0.11B = 2<sup>-1</sup> + 2<sup>-2</sup> = 0.5 + 0.25 = 0.75</code>），-0.75表示为<code>1.11</code>；+3（十进制）表示为<code>0,11</code>，-3表示为<code>1,11</code>。<br>原码表示简单明了，但存在较多缺陷：</p>
+<ul>
+<li>0的表示不唯一，即可以表示为0000（0），也可以表示为1000（-0）。</li>
+<li>运算不便，比如 -4 + 3，得先用数值大的减去数值小的，最终结果的符号位以数值大的为准，这样导致加法运算却要用减法器实现。</li>
+</ul>
+<h3 id="补码"><a href="#补码" class="headerlink" title="补码"></a>补码</h3><p>补码的意义在于，实现了用与负数等价的正数来替代，让加法器能实现减法操作。<br>还记得之前提到的 时钟原理 吗，可以回顾一下 <strong>模</strong> 和 <strong>同余数</strong> 的概念  <a href="/2020/07/16/character-encoding/" title="字符编码那点事">字符编码那点事</a>。</p>
+<blockquote>
+<p>修正下：其实之前讲的 同余数 就是 <strong>补数</strong>（用补数更符合数学概念的定义），eg. +9 是 -3 以 12 为模的补数，记作 -3 ≡ 9（mod 12）。</p>
+</blockquote>
+<p>eg. A = 9，B = 5，求 A - B（mod 12）。<br>A - B = 9 - 5 = 4（减法操作）<br>对于模 12 而言，-5 可以用其补数 +7 代替，所以，A - B = 9 + 7 = 16（作加法）。<br>而 12 会自动丢弃，所以，16 等价于 4，即， 4 ≡ 16（mod 12）。<br>进一步分析发现，时钟上的3点、15点都指向3的刻度，即，3 ≡ 15（mod 12） =&gt; 3 ≡ 3 + 12 ≡ 3（mod 12）。<br>这说明正数相对于“模”的补数就是正数自身，即，<strong>正数的补码等于原码</strong>。<br>同理，- 1011 ≡ + 0101（mod 2<sup>4</sup>），+ 0101 ≡ + 0101（mod 2<sup>4</sup>），- 0.1001 ≡ + 1.0111（mod 2<sup>1</sup>），+ 0.1001 ≡ 0.1001（mod 2<sup>1</sup>）。</p>
+<p>小数中，当模数为 2<sup>2</sup> 时，形成了双符号位的补码，eg. -0.1001 对于 mod 2<sup>2</sup> 而言，补码为 11.0111。<br>这种双符号位的补码又称为<strong>变形补码</strong>，它在阶码运算和溢出判断中有其特殊作用。</p>
+<h3 id="反码"><a href="#反码" class="headerlink" title="反码"></a>反码</h3><p>反码，主要用在负数中作为 由原码求补码 或 由补码求原码 的中间过渡。<br>正数的反码等于原码，负数的反码等于原码除符号位外按位取反。<br>负数求补码的简单方式即为：<strong>反码加1</strong>（加1是指末端数值位加1）；同时，原码与补码互为补数，所以 由原码求补码 或 由补码求原码 都可以用 反码加1。</p>
+<h3 id="移码"><a href="#移码" class="headerlink" title="移码"></a>移码</h3><p>虽然补码解决了减法操作，但很难用补码在直观上比较大小，eg. -3 的补码是 <code>1,1101</code>，+4 的补码是 <code>0,0100</code>，直观上看，会以为 1,1101 &gt; 0,0100。<br>如果加上2<sup>n</sup>，情况就发生了变化，eg. - 0011（-3 的二进制） + 10000 = 01111 + 00001 - 0011 = 01101，0100（4 的二进制） + 10000 = 10100，10100 &gt; 01101。<br><strong>移码就是真值加2<sup>n</sup>（n为整数的位数）</strong>，在数轴上相当于正向移动了2<sup>n</sup>个单元。<br>从结果可以看出，<strong>移码 相当于 符号位取反的补码</strong>，所以，移码的表示范围也为 <code>-2<sup>n-1</sup> ~ +(2<sup>n-1</sup> - 1)</code>。</p>
+<p><strong>最小真值的移码为0</strong>（eg. 16位二进制，补码对应的最小真值为-128，即 <code>10000000</code>，对应移码为 <code>00000000</code>），利用这一特点，浮点数的阶码用移码表示时，就能很方便地判断阶码的大小。</p>
+<p>为了进一步理解，下面给出8位二进制在不同表示（无符号数、原码、补码、反码、移码）时所对应的真值：</p>
+<table>
+<thead>
+<tr>
+<th>二进制代码</th>
+<th>无符号数对应的真值</th>
+<th>原码对应的真值</th>
+<th>补码对应的真值</th>
+<th>反码对应的真值</th>
+<th>移码对应的真值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>00000000</code></td>
+<td>0</td>
+<td>+0</td>
+<td>+0/-0</td>
+<td>+0</td>
+<td>-128</td>
+</tr>
+<tr>
+<td><code>00000001</code></td>
+<td>1</td>
+<td>+1</td>
+<td>+1</td>
+<td>+1</td>
+<td>-127</td>
+</tr>
+<tr>
+<td><code>00000010</code></td>
+<td>2</td>
+<td>+2</td>
+<td>+2</td>
+<td>+2</td>
+<td>-126</td>
+</tr>
+<tr>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+</tr>
+<tr>
+<td><code>01111110</code></td>
+<td>126</td>
+<td>+126</td>
+<td>+126</td>
+<td>+126</td>
+<td>-2</td>
+</tr>
+<tr>
+<td><code>01111111</code></td>
+<td>127</td>
+<td>+127</td>
+<td>+127</td>
+<td>+127</td>
+<td>-1</td>
+</tr>
+<tr>
+<td><code>10000000</code></td>
+<td>128</td>
+<td>-0</td>
+<td>-128</td>
+<td>-127</td>
+<td>+0/-0</td>
+</tr>
+<tr>
+<td><code>10000001</code></td>
+<td>129</td>
+<td>-1</td>
+<td>-127</td>
+<td>-126</td>
+<td>+1</td>
+</tr>
+<tr>
+<td><code>10000010</code></td>
+<td>130</td>
+<td>-2</td>
+<td>-126</td>
+<td>-125</td>
+<td>+2</td>
+</tr>
+<tr>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+<td>…</td>
+</tr>
+<tr>
+<td><code>11111101</code></td>
+<td>253</td>
+<td>-125</td>
+<td>-3</td>
+<td>-2</td>
+<td>+125</td>
+</tr>
+<tr>
+<td><code>11111110</code></td>
+<td>254</td>
+<td>-126</td>
+<td>-2</td>
+<td>-1</td>
+<td>+126</td>
+</tr>
+<tr>
+<td><code>11111111</code></td>
+<td>255</td>
+<td>-127</td>
+<td>-1</td>
+<td>-0</td>
+<td>+127</td>
+</tr>
+</tbody></table>
+<p>计算机中，根据小数点位置是否固定，划分为浮点数和定点数。</p>
+<h2 id="定点数"><a href="#定点数" class="headerlink" title="定点数"></a>定点数</h2><p>小数点不再表示出来，而是约定在默认的固定位置。有两种格式：</p>
+<ul>
+<li>小数点位于符号位和数值位之间，此时的机器数称为<strong>定点小数</strong>。</li>
+<li>小数点位于数值位之后，此时的机器数称为<strong>定点整数</strong>。</li>
+</ul>
+<p>表示范围分别为：</p>
+<table>
+<thead>
+<tr>
+<th align="center"></th>
+<th><center>定点整数</center></th>
+<th><center>定点小数</center></th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">原码</td>
+<td><code>-(2<sup>n</sup> - 1) ~ +(2<sup>n</sup> - 1)</code></td>
+<td><code>-(1 - 2<sup>-n</sup>) ~ +(1 - 2<sup>-n</sup>)</code></td>
+</tr>
+<tr>
+<td align="center">补码</td>
+<td><code>-2<sup>n-1</sup> ~ +(2<sup>n-1</sup> - 1)</code></td>
+<td><code>-1 ~ +(1 - 2<sup>-n</sup>)</code></td>
+</tr>
+<tr>
+<td align="center">反码</td>
+<td><code>-(2<sup>n</sup> - 1) ~ +(2<sup>n</sup> - 1)</code></td>
+<td><code>-(1 - 2<sup>-n</sup>) ~ +(1 - 2<sup>-n</sup>)</code></td>
+</tr>
+</tbody></table>
+<h2 id="浮点数"><a href="#浮点数" class="headerlink" title="浮点数"></a>浮点数</h2><p>相对于定点数而言，浮点数利用指数使小数点的位置可以根据需要而上下浮动，从而可以灵活地表达更大范围的实数。<br>eg. <code>352.47 = 3.5247 &times; 10<sup>2</sup> = 3524.7 &times; 10<sup>-1</sup> = 0.3527 &times; 10<sup>3</sup></code><br><strong>用 N = S &times; r<sup>j</sup> 表示浮点数，S 为尾数，j 为阶码，r 是基数。</strong><br>以基数 r = 2 为例，11.0101 = 0.110101 &times; 2<sup>10</sup> = 1.10101 &times; 2<sup>1</sup> = 1101.01 &times; 2<sup>-10</sup> = 0.00110101 &times; 2<sup>100</sup> = …<br>为了提高数据精度以及便于浮点数的比较，规定计算机中浮点数的尾数用纯小数形式，故 0.110101 &times; 2<sup>10</sup> 和 0.00110101 &times; 2<sup>100</sup> 是可以采用的。<br>原码表示时，将尾数最高位为1的浮点数称为<strong>规格化数</strong>，即 N = 0.110101 &times; 2<sup>10</sup> 为浮点数的规格化形式，此时精度最高。</p>
+<h3 id="表示格式"><a href="#表示格式" class="headerlink" title="表示格式"></a>表示格式</h3><p><img src="/images/floating-point.png" alt="alt"><br>浮点数由阶码 j 和 尾数 S 两部分组成。<br>阶码是整数形式，其位数m反映了浮点数的范围；尾数是小数形式，其位数n反映了浮点数的精度。<br>规格化浮点数的表示范围（原码表示）为：正数 <code>2<sup>-(2<sup>m</sup>&nbsp;-&nbsp;1)</sup>&nbsp;&times;&nbsp;2<sup>-1</sup> ~ 2<sup>(2<sup>m</sup>&nbsp;-&nbsp;1)</sup>&nbsp;&times;&nbsp;(1&nbsp;-&nbsp;2<sup>-n</sup>)</code>，负数 <code>-2<sup>(2<sup>m</sup>&nbsp;-&nbsp;1)</sup>&nbsp;&times;&nbsp;(1&nbsp;-&nbsp;2<sup>-n</sup>) ~ -2<sup>-(2<sup>m</sup>&nbsp;-&nbsp;1)</sup>&nbsp;&times;&nbsp;2<sup>-1</sup></code>。<br>通常，短实数（32位）阶码取8位（含阶符），尾数取24位（含数符）；长实数（64位），阶码取11位（含阶符），尾数取53位（含数符）。</p>
+<h3 id="上溢-amp-下溢"><a href="#上溢-amp-下溢" class="headerlink" title="上溢 &amp; 下溢"></a>上溢 &amp; 下溢</h3><p><img src="/images/overflow.png" alt="alt"><br>当阶码大于最大阶码时，称为上溢；此情况，程序报异常，需进行中断溢出处理。<br>当阶码小于最小阶码时，称为下溢；此情况，通常将尾数各位强置为0，按<strong>机器零</strong>处理，程序继续运行。</p>
+<h3 id="IEEE754标准"><a href="#IEEE754标准" class="headerlink" title="IEEE754标准"></a>IEEE754标准</h3><p>现今，浮点数一般采用 IEEE 754 标准：<br><img src="/images/ieee754.png" alt="alt"><br>常用的浮点数有三种：</p>
+<table>
+<thead>
+<tr>
+<th align="center"></th>
+<th align="center">符号位 S</th>
+<th align="center">阶码</th>
+<th align="center">尾数</th>
+<th align="center">总位数</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">短实数</td>
+<td align="center">1</td>
+<td align="center">8</td>
+<td align="center">23</td>
+<td align="center">32</td>
+</tr>
+<tr>
+<td align="center">长实数</td>
+<td align="center">1</td>
+<td align="center">11</td>
+<td align="center">52</td>
+<td align="center">64</td>
+</tr>
+<tr>
+<td align="center">临时实数</td>
+<td align="center">1</td>
+<td align="center">15</td>
+<td align="center">64</td>
+<td align="center">80</td>
+</tr>
+</tbody></table>
+<p>其中，阶码用移码表示，为阶码的真值加上一个偏移量（短实数时加 127，长实数时加 1023）；<br>尾数用补码表示，规格化表示，非“0”时最高位为 1，对短实数和长实数，此高位 1 隐藏。<br>举个栗子，十进制数 <code>178.125</code>，对应二进制数 <code>10110010.001</code>，二进制浮点表示 <code>1.0110010001&nbsp;&times;&nbsp;2<sup>111</sup></code>，短实数表示 <code>0,10000110;01100100010000000000000</code>。</p>
+<h4 id="真值公式"><a href="#真值公式" class="headerlink" title="真值公式"></a>真值公式</h4><p>短实数，即，单精度浮点数，<code>x&nbsp;=&nbsp;(-1)<sup>S</sup>&nbsp;&times;&nbsp;(1.M)&nbsp;&times;&nbsp;2<sup>E&nbsp;-&nbsp;127</sup></code>，e = E - 127<br>长实数，即，双精度浮点数，<code>x&nbsp;=&nbsp;(-1)<sup>S</sup>&nbsp;&times;&nbsp;(1.M)&nbsp;&times;&nbsp;2<sup>E&nbsp;-&nbsp;1023</sup></code>，e = E - 1023</p>
+<h4 id="特殊值定义"><a href="#特殊值定义" class="headerlink" title="特殊值定义"></a>特殊值定义</h4><p>IEEE754中规定了几个特殊值：</p>
+<ul>
+<li>阶码全为0，尾数也全为0，表示的是0；根据不同的阶符（0正1负），可表示 +0 和 -0。</li>
+<li>阶码全为0，尾数不全为0，表示正负规格化数；此时的阶码为-126，可以理解为把 <code>1.M&nbsp;&times;&nbsp;2<sup>0&nbsp;-&nbsp;127</sup></code>转换成<code>0.1M&nbsp;&times;&nbsp;2<sup>0&nbsp;-&nbsp;127&nbsp;+&nbsp;1</sup></code>。</li>
+<li>阶码全为1，尾数全为0，根据阶符不同，表示正负无穷大。</li>
+<li>阶码全为1，尾数不全为0，表示 NaN（Not a Number），即，不是一个数。</li>
+</ul>
+<h2 id="加减运算"><a href="#加减运算" class="headerlink" title="加减运算"></a>加减运算</h2><p>现今，计算机中基本都采用补码作加减法运算。</p>
+<h3 id="定点数-1"><a href="#定点数-1" class="headerlink" title="定点数"></a>定点数</h3><h4 id="基本公式"><a href="#基本公式" class="headerlink" title="基本公式"></a>基本公式</h4><p>整数，<code>[A]<sub>补</sub> + [B]<sub>补</sub> = [A + B]<sub>补</sub>(mod 2<sup>n + 1</sup>)</code>，<code>[A - B]<sub>补</sub> = [A]<sub>补</sub> + [-B]<sub>补</sub>(mod 2<sup>n + 1</sup>)</code><br>小数，<code>[A]<sub>补</sub> + [B]<sub>补</sub> = [A + B]<sub>补</sub>(mod 2)</code>，<code>[A - B]<sub>补</sub> = [A]<sub>补</sub> + [-B]<sub>补</sub>(mod 2)</code><br>eg. A = 0.1011，B = 0.0101，求[A - B]<sub>补</sub>。<br>解：[A - B]<sub>补</sub> = [A]<sub>补</sub> + [-B]<sub>补</sub> = 0.1011 + 1.1011 = 10.0110，按模2取值，丢弃最左边的1，结果为 0.0110。<br>eg. 8位机器字长（含符号位），A = +15，B = +24，求 [A - B]<sub>补</sub>并还原成真值。<br>解：[A - B]<sub>补</sub> = [A]<sub>补</sub> + [-B]<sub>补</sub> = 0,0001111 + 1,1101000 = 1,1110111，A - B = -0001001 = -9。</p>
+<h4 id="溢出判断"><a href="#溢出判断" class="headerlink" title="溢出判断"></a>溢出判断</h4><p>运算结果超出了机器字长所能表示的范围，这种现象，称之为<strong>溢出</strong>。<br>比如，8位机器字长，A = -93，B = +45，则计算出来的[A - B]<sub>补</sub> = 10,1110110，按模2<sup>n+1</sup>取值，丢弃最左边的1，结果为 0,1110110，A - B = +1110110 = +118，结果出错了。<br>为什么？这是因为 A - B = -138，而8位机器字长的有符号数能表示的真值范围为 -128 ~ +127，结果溢出了。<br>判断溢出有两种方法：</p>
+<ul>
+<li>用1位符号位判断溢出：参与操作的两个数符号相同，但结果却与操作数的符号不同。<br>减法是用加法器实现的，上例中相当于两个负数相加，而结果却为正数，故，可以判断是溢出。</li>
+<li>用2位符号位判断溢出：用变形补码作加法，当2位符号位不同时，表示溢出，否则，无溢出；高位符号位为结果的符号。<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">eg. x &#x3D; +(11&#x2F;16)，y &#x3D; +(3&#x2F;16)，用变形补码计算 x + y。</span><br><span class="line">解：x &#x3D; 0.1011，y &#x3D; 0.0011</span><br><span class="line">&#x3D;&gt; [x]变补 &#x3D; 00.1011，[y]变补 &#x3D; 00.0011</span><br><span class="line">&#x3D;&gt; [x]变补 + [y]变补 &#x3D; 00.1110</span><br><span class="line">&#x3D;&gt; [x + y]变补 &#x3D; 00,1110</span><br><span class="line">符号位相同，无溢出，故 x + y &#x3D; 0,1110</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">eg. x &#x3D; +(11&#x2F;16)，y &#x3D; +(7&#x2F;16)，用变形补码计算 x + y。</span><br><span class="line">解：x &#x3D; 0.1011，y &#x3D; 0.0111</span><br><span class="line">&#x3D;&gt; [x]变补 &#x3D; 00.1011，[y]变补 &#x3D; 00.0111</span><br><span class="line">&#x3D;&gt; [x]变补 + [y]变补 &#x3D; 01.0010</span><br><span class="line">符号位不同，表示溢出。</span><br></pre></td></tr></table></figure>
+注：用2位符号位判断溢出对整数也适用。</li>
+</ul>
+<h3 id="浮点数-1"><a href="#浮点数-1" class="headerlink" title="浮点数"></a>浮点数</h3><p>浮点数加减运算的步骤：</p>
+<ul>
+<li>对阶 - 使两数的小数点位置对齐。<br>小阶向大阶看齐原则：阶小的尾数向右移位，每右移一位，阶码加1，直至两数的阶码相等。<br>例如，x = <code>0.1101&nbsp;&times;&nbsp;2<sup>01</sup></code>，y = <code>(-0.1010)&nbsp;&times;&nbsp;2<sup>11</sup></code>，求 x + y 时必须先对阶。<br>阶码相差 = [x 阶码]补 = [y 阶码]补 = [x 阶码]补 + [-y 阶码]补 = +01 + (-11) = 0,01 + 1,01 = 1,10 = -2。<br>将 x 的尾数右移两位，其阶码加2，得 x = <code>0.001101&nbsp;&times;&nbsp;2<sup>11</sup></code>，假设尾数只有4位，需丢弃超出的数值位，得 x = <code>0.0011&nbsp;&times;&nbsp;2<sup>11</sup></code>。<br>故，尾数右移可能会造成数值位丢失，影响精度。</li>
+<li>尾数求和 - 将对阶后的两尾数按定点加减运算规则求和（差）。<br>上例中，两数对阶后，[x 尾数]变补 = 00.0011，[y 尾数]变补 = 11.0110，相加等于 11.1001。<br>注：用变形补码进行计算是为了便于后续的溢出判断。</li>
+<li>规格化 - 为增加有效数字的位数，提高运算精度，将求和（差）后的尾数规格化。<br>分 左规 和 右规。<ul>
+<li>左规 - 形如 00.0xxx 或 11.1xxx 时，尾数左移一位，阶码减1，直至符合规格化表示。<br>上例中，[x 尾数 + y 尾数]变补 = 11.1001，需左规，得 11.0010，故 x + y =  -0.1110 &times; 2<sup>10</sup>。</li>
+<li>右规 - 形如 01.xxx 或 10.xxx 时，表示尾数溢出，需通过尾数右移一位，阶码加1进行处理。</li>
+</ul>
+</li>
+<li>舍入 - 为提高精度，需考虑尾数右移时丢失的数值位。<br>在对阶和右规时，常用如下两种舍入方法来提高尾数的精度：<ul>
+<li>0舍1入<br>“0舍1入”类似于十进制数运算中的“四舍五入”，即，被移去的最高数值位（注：指移去的数值位中的最高位）为1，则在尾数的末位加1；否则，舍去。<br>但，这种做法可能使尾数又溢出，此时需再做一次右规。</li>
+<li>恒置1<br>不论丢弃的最高数值位是1或0，都使右移后的尾数末位恒置1。</li>
+</ul>
+</li>
+<li>溢出判断 - 判断结果是否溢出。<br>尾数溢出并不表示结果溢出，只有右规后，再根据阶码来判断结果是否溢出，eg. 单精度浮点数的阶码的表示范围为 <code>-128 ~ +127</code>（补码表示）。<ul>
+<li>上溢 - 阶码的值超过了阶码所能表示的最大正数。<br>若浮点数为正数，则为正上溢，记为 +∞，若浮点数为负数，则为负上溢，记为 -∞。</li>
+<li>下溢 - 阶码的值超过了阶码所能表示的最小负数。<br>下溢时，浮点数值趋于零，作为机器零看待。</li>
+</ul>
+</li>
+</ul>
+<p>举个栗子，设 x = <code>2<sup>-101</sup>&nbsp;&times;&nbsp;(-0.101000)</code>，y = <code>2<sup>-100</sup>&nbsp;&times;&nbsp;(+0.111011)</code>，阶符2位，阶码的数值部分3位，数符2位，尾数的数值部分6位，求 x - y。<br>解：[x]补 = <code>11,011;11.011000</code>，[y]补 = <code>11,100;00.111011</code></p>
+<ol>
+<li>对阶：小阶向大阶看齐，两数的阶码相差 = [x 阶码]补 - [y 阶码]补 = [x 阶码]补 + [-y 阶码]补 = -101 + 100 = 11,011 + 00,100 = 11,111，即，阶码相差 = -1，则x的尾数向右移1位，阶码+1，得 [x]补 = <code>11,100;11.101100</code>。</li>
+<li>尾数求和：[x 尾数]补 - [y 尾数]补 = [x 尾数]补 + [-y 尾数]补 = 11.101100 + 11.000101 = 10.110001，即，[x - y]补 = <code>11,100;10.110001</code>。</li>
+<li>规格化：尾数符号位为“10”，需右规，舍弃尾数最后一位数值位，得 [x - y]补 = <code>11,101;11.011000</code>。</li>
+<li>舍入：采用“0舍1入”，尾数右规时舍弃的末位数值位是1，故尾数加1，得 [x - y]补 = <code>11,101;11.011001</code>。</li>
+<li>溢出判断：[x - y]补的阶码为11,101，即 -011，没有溢出，故最终结果为 x - y = <code>2<sup>-011</sup>&nbsp;&times;&nbsp;(-0.100111)</code>。</li>
+</ol>
+<h2 id="最初的问题"><a href="#最初的问题" class="headerlink" title="最初的问题"></a>最初的问题</h2><p>首先，我们可以发现，0.58 是无法精准转换为二进制的，即，0.58 = 0.100101000111101… = <code>1.00101000111101...&nbsp;&times;&nbsp;2<sup>-001</sup></code>。<br>而 PHP 和 Java 等都遵循 IEEE 754 浮点数表示规范，所以，双精度存储的尾数为 <code>0010100011110101110000101000111101011100001010001111</code>，转十进制得 0.57999999999999996。<br>因此，<strong>看似有穷的小数，在计算机的二进制表示里却是无穷的</strong>。<br>所以，0.58 - 0.50，实际上得到的是 0.07999…，再乘以 100 得 57.99999…（涉及浮点数乘法）。<br>而 PHP 中用 int 强制把浮点型转换为整型（效果同 intval 一样）时会直接舍弃非整型部分的数值，所以程序结果为 57。</p>
+<h2 id="几个问题"><a href="#几个问题" class="headerlink" title="几个问题"></a>几个问题</h2><h3 id="为什么补码可以表示的最小真值是-2n-1？"><a href="#为什么补码可以表示的最小真值是-2n-1？" class="headerlink" title="为什么补码可以表示的最小真值是 -2n-1？"></a>为什么补码可以表示的最小真值是 <code>-2<sup>n-1</sup></code>？</h3><p>拿8位二进制来说，补码能表示的最小真值为 -2<sup>7</sup> = -128，对应二进制为 <code>1000 0000</code>。<br>为了理解，我们先看来 -127，原码为 <code>1111 1111</code>，补码为 <code>1000 0001</code>。<br>可以看出，-127 的补码表示还可以再减1，即 <code>1000 0001</code> - 1 = <code>1000 0000</code> = -128。<br>注：通常的进制转换主要用于无符号数，对于符号数的反码、补码、移码等表示，并不能直接用进制转换得出对应真值，需通过原码来转换。</p>
+<h3 id="为什么要用移码来表示阶码？"><a href="#为什么要用移码来表示阶码？" class="headerlink" title="为什么要用移码来表示阶码？"></a>为什么要用移码来表示阶码？</h3><p>原因是便于浮点数加减运算时的对阶操作（即，比较大小）。<br>eg. <code>1.01&nbsp;&times;&nbsp;2<sup>-1</sup>&nbsp;+&nbsp;1.11&nbsp;&times;&nbsp;2<sup>3</sup></code><br>如果用补码来表示阶码，则-1的补码在机器中是<code>111</code>，3的补码是<code>011</code>，在机器中直接比较是<code>111 &gt; 011</code>，不符。<br>而用移码可以解决这个问题，-1的移码表示为011（3），而3的移码表示为111（7），符合实际。</p>
+<h3 id="如何理解原码表示的规格化浮点数范围？"><a href="#如何理解原码表示的规格化浮点数范围？" class="headerlink" title="如何理解原码表示的规格化浮点数范围？"></a>如何理解原码表示的规格化浮点数范围？</h3><p>首先，原码表示的规格化浮点数的尾数最高位为1，所以n位尾数的原码表示范围为：正数 <code>2<sup>-1</sup> ~ (1&nbsp;-&nbsp;2<sup>-n</sup>)</code>，负数 <code>-(1&nbsp;-&nbsp;2<sup>-n</sup>) ~ -2<sup>-1</sup></code>。<br>同样，m位阶码的原码表示范围为：<code>-(2<sup>m</sup>&nbsp;-&nbsp;1) ~ (2<sup>m</sup>&nbsp;-&nbsp;1)</code>。</p>
+<h3 id="理解浮点数的规格化表示"><a href="#理解浮点数的规格化表示" class="headerlink" title="理解浮点数的规格化表示"></a>理解浮点数的规格化表示</h3><p>规格化表示：原码表示时，尾数的最高数值位为1；补码表示时，尾数的最高数值位与符号位相异。<br>如何理解补码表示时的规格化定义？原码表示时，规格化数为 0.1xxx：<br><code>+ 0.1xxx</code> 的补码为 <code>0.1xxx</code>，<code>- 0.1xxx</code> 的补码为 <code>1.0xxx + 2<sup>-n</sup></code>，若xxx不全为1，则结果为 1.0yyy，符合定义，但若xxx全为1，则结果为 1.1000，不符合定义。<br>所以，为了硬件判断，特规定 -(1/2) 不是规格化数。</p>
+<h3 id="浮点数可以精准表示-0-吗，如何理解-机器零？"><a href="#浮点数可以精准表示-0-吗，如何理解-机器零？" class="headerlink" title="浮点数可以精准表示 0 吗，如何理解 机器零？"></a>浮点数可以精准表示 0 吗，如何理解 机器零？</h3><p>机器零 指 尾数全为 0 或 阶码等于或小于最小阶码（eg. 若阶码用原码表示，则等于或小于 <code>-(2<sup>m</sup>&nbsp;-&nbsp;1)</code>）时，计算机都把浮点数当作零看待。<br>如果阶码用移码表示，尾数用补码表示，则，最小真值的阶码全为0 且 真值为0的尾数也全为0，这样的机器零有利于简化机器中的判“0”电路。<br>另，IEEE 754 只对非“0”的有效位隐藏最高位 1，即，全 0 的情况下没有隐藏位，符合 机器零，所以，浮点数可以精准表示 0。</p>
+<h3 id="定点数和浮点数的表示示例"><a href="#定点数和浮点数的表示示例" class="headerlink" title="定点数和浮点数的表示示例"></a>定点数和浮点数的表示示例</h3><p>16位浮点数，其中，阶码5位（含阶符），尾数11位（含数符）。</p>
+<table>
+<thead>
+<tr>
+<th align="center">十进制数</th>
+<th align="center">二进制形式</th>
+<th align="center">定点数表示</th>
+<th align="center">定点数机器存储</th>
+<th align="center">浮点数规格化表示</th>
+<th align="center">浮点数机器存储</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center"><code>+(13/128)</code></td>
+<td align="center"><code>0.0001101000</code></td>
+<td align="center"><code>0.0001101000</code></td>
+<td align="center">原码=补码=反码=<code>0.0001101000</code></td>
+<td align="center"><code>0.1101000000&nbsp;&times;&nbsp;2<sup>-11</sup></code></td>
+<td align="center">原码 <code>1,0011;0.1101000000</code><br />补码 <code>1,1101;0.1101000000</code><br />反码 <code>1,1100;0.1101000000</code></td>
+</tr>
+<tr>
+<td align="center"><code>-54</code></td>
+<td align="center"><code>-110110</code></td>
+<td align="center"><code>-0000110110</code></td>
+<td align="center">原码 <code>1,0000110110</code><br />补码 <code>1,1111001010</code><br />反码 <code>1,1111001001</code></td>
+<td align="center"><code>-(0.1101100000)&nbsp;&times;&nbsp;2<sup>110</sup></code></td>
+<td align="center">原码 <code>0,0110;1.1101100000</code><br />补码 <code>0,0110;1.0010100000</code><br />反码 <code>0,0110;1.0010011111</code></td>
+</tr>
+<tr>
+<td align="center"><code>-(53/512)</code></td>
+<td align="center"><code>-0.0001101010</code></td>
+<td align="center"><code>-0.0001101010</code></td>
+<td align="center">原码 <code>1.0001101010</code><br />补码 <code>1.1110010110</code><br />反码 <code>1.1110010101</code></td>
+<td align="center"><code>-(0.1101010000)&nbsp;&times;&nbsp;2<sup>-11</sup></code></td>
+<td align="center">原码 <code>1,0011;1.1101010000</code><br />补码 <code>1,1101;1.0010110000</code><br />反码 <code>1,1101;1.0010101111</code></td>
+</tr>
+</tbody></table>
+<p>如果阶码用移码表示，尾数用补码表示，则 <code>-(53/512)</code> = <code>0,1101;1.0010110000</code>。</p>
+<h3 id="为什么-IEEE754-中，32位浮点数的阶码偏移量是-127-而不是-128？"><a href="#为什么-IEEE754-中，32位浮点数的阶码偏移量是-127-而不是-128？" class="headerlink" title="为什么 IEEE754 中，32位浮点数的阶码偏移量是 127 而不是 128？"></a>为什么 IEEE754 中，32位浮点数的阶码偏移量是 127 而不是 128？</h3><p>8位阶码的真值是 -127（<code>- 111 1111</code>） ~ +127（<code>+ 111 1111</code>），通常，移码 为 真值 + 2<sup>7</sup>，相当于符号位取反的补码。<br>但，IEEE754中保留了阶码全为1和全为0的情况（用于特殊值定义），这样，阶码表达的范围变成了 1 ~ 254，对应真值范围为 -126 ~ +127。<br>那么从 [1, 254] 对应到实际的真值范围 [-126, +127]，减去127就好了，这样就可以获得指数的真值了。<br>这个减去的 127 就是偏移量。</p>
+<h3 id="IEEE754浮点数表示示例"><a href="#IEEE754浮点数表示示例" class="headerlink" title="IEEE754浮点数表示示例"></a>IEEE754浮点数表示示例</h3><ol>
+<li>求 1.640625 &times; 2<sup>20</sup> 的单精度存储格式<br><code>1.640625 &times; 2<sup>20</sup> = 1.101001 &times; 2<sup>10100</sup> = 0,10010011;10100100000000000000000 = 49D20000H</code></li>
+<li>求 B5D20000H 的真值<br><code>B5D20000H = 1,01101011;10100100000000000000000 = -1.101001 &times; 2<sup>-10100</sup> = -1.640625 &times; 2<sup>-20</sup></code></li>
+<li>求 80510000H 的真值<br><code>80510000H = 1,00000000;10100010000000000000000 = -0.1010001 &times; 2<sup>-126</sup> = -0.640625 &times; 2<sup>-126</sup></code></li>
+</ol>
+<h3 id="既然-0-58-是无法精确存储的，为什么程序能精确输出-0-58？"><a href="#既然-0-58-是无法精确存储的，为什么程序能精确输出-0-58？" class="headerlink" title="既然 0.58 是无法精确存储的，为什么程序能精确输出 0.58？"></a>既然 0.58 是无法精确存储的，为什么程序能精确输出 0.58？</h3><figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">$f1 = <span class="number">0.58</span>;</span><br><span class="line">$f2 = <span class="number">0.580000000000002</span>;</span><br><span class="line">$f3 = <span class="number">0.579999999999996</span>;</span><br><span class="line">var_dump($f1);<span class="comment">// float(0.58)</span></span><br><span class="line">var_dump($f2);<span class="comment">// float(0.58)</span></span><br><span class="line">var_dump($f3);<span class="comment">// float(0.58)</span></span><br></pre></td></tr></table></figure>
+<p>实际上，0.58、0.580000000000002 和 0.579999999999996 的存储形式是一样的，程序都当作是 0.58。怎么说？<br>若把浮点数能表示的所有数都画在一条数轴上，那么会看到能表示的两个数字之间是有间隔的，且在0附近的数值间隔要比其他地方小，即，0附近的数比较密集。<br><strong>能表示的两个数字之间的数，在计算机看来都是同一个数</strong>。如 0.58、0.580000000000002、0.579999999999996 是同一个数。<br>这几个数按 IEEE 754 标准存到计算机中时，尾数23位满了，但后边还有，把后边的省略了；省略之后，剩下的全部一样，所以计算机认为它们是一个数。</p>
+<h2 id="常见面试题"><a href="#常见面试题" class="headerlink" title="常见面试题"></a>常见面试题</h2><h3 id="为什么不要用-float-double-存储金额？"><a href="#为什么不要用-float-double-存储金额？" class="headerlink" title="为什么不要用 float / double 存储金额？"></a>为什么不要用 float / double 存储金额？</h3><p>有丢失精度的风险，特别是在浮点运算时。<br>可以考虑以最小单位的整型方式存储，若确实需要用浮点数进行运算，可以考虑用语言提供的类库来处理。<br>eg. PHP可以用 BC Math 系列函数，Java可以用 BigDemical 类（通过字符串精准存储每一位数）。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><p>计算机组成原理（第2版）第6章 计算机的运算方法<br>关于PHP浮点数你应该知道的，<a href="https://www.laruence.com/2011/12/19/2399.html" target="_blank" rel="noopener">https://www.laruence.com/2011/12/19/2399.html</a><br>PHP浮点数的一个常见问题的解答，<a href="https://www.laruence.com/2013/03/26/2884.html" target="_blank" rel="noopener">https://www.laruence.com/2013/03/26/2884.html</a><br>Float 浮点型，<a href="https://www.php.net/manual/zh/language.types.float.php" target="_blank" rel="noopener">https://www.php.net/manual/zh/language.types.float.php</a><br>为什么要用移码来表示阶码，<a href="https://www.cnblogs.com/roscangjie/p/12237725.html" target="_blank" rel="noopener">https://www.cnblogs.com/roscangjie/p/12237725.html</a><br>32位IEEE754的阶码偏移量为何用127而不是128，<a href="https://www.zhihu.com/question/24784136" target="_blank" rel="noopener">https://www.zhihu.com/question/24784136</a><br><a href="https://my.oschina.net/jasonli0102/blog/3013198" target="_blank" rel="noopener">浮点数0.7在Java中是无法精确存储的，却为何能精确输出0.7</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%B5%AE%E7%82%B9%E6%95%B0/" rel="tag"># 浮点数</a>
+              <a href="/tags/IEEE754/" rel="tag"># IEEE754</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/08/07/io-multiplexing/" rel="prev" title="IO多路复用">
+      <i class="fa fa-chevron-left"></i> IO多路复用
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+        </div>
+        
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Meegle</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
