@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.ico">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"meegle.github.io","root":"/","scheme":"Gemini","version":"8.0.0-rc.4","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="架构，貌似对我们来说并不陌生，因为工作中时不时会提到架构，如今市面上也有各种XXX架构师的职位。更多时候我们还会调侃架构师只是一群画图做PPT的人…但，我们真的理解什么是架构吗？确实有必要梳理下概念，有个整体的认识，以便更好的深耕细分领域，共勉！ 什么是架构架构这个词起源于建筑，是一个比较宽泛的概念，业内也未有标准的定义。  架构，又名软件架构，是有关软件整体结构与组件的抽象描述，用于指导大型软件">
+<meta property="og:type" content="article">
+<meta property="og:title" content="日常说的架构到底指什么">
+<meta property="og:url" content="http://meegle.github.io/2020/09/28/software-architecture/index.html">
+<meta property="og:site_name" content="MeeGle&#39;s Notes">
+<meta property="og:description" content="架构，貌似对我们来说并不陌生，因为工作中时不时会提到架构，如今市面上也有各种XXX架构师的职位。更多时候我们还会调侃架构师只是一群画图做PPT的人…但，我们真的理解什么是架构吗？确实有必要梳理下概念，有个整体的认识，以便更好的深耕细分领域，共勉！ 什么是架构架构这个词起源于建筑，是一个比较宽泛的概念，业内也未有标准的定义。  架构，又名软件架构，是有关软件整体结构与组件的抽象描述，用于指导大型软件">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://meegle.github.io/images/4+1-view-model.png">
+<meta property="og:image" content="http://meegle.github.io/images/togaf.png">
+<meta property="og:image" content="http://meegle.github.io/images/space-based_architecture.png">
+<meta property="og:image" content="http://meegle.github.io/images/process-unit.png">
+<meta property="og:image" content="http://meegle.github.io/images/computer-system-layering.png">
+<meta property="og:image" content="http://meegle.github.io/images/architect-competency.png">
+<meta property="article:published_time" content="2020-09-28T12:05:11.000Z">
+<meta property="article:modified_time" content="2020-09-28T12:30:10.535Z">
+<meta property="article:author" content="Meegle">
+<meta property="article:tag" content="软件架构">
+<meta property="article:tag" content="4+1视图模型">
+<meta property="article:tag" content="TOGAF">
+<meta property="article:tag" content="架构师">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://meegle.github.io/images/4+1-view-model.png">
+
+<link rel="canonical" href="http://meegle.github.io/2020/09/28/software-architecture/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>日常说的架构到底指什么 | MeeGle's Notes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <main class="main">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+        <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+        <span class="toggle-line toggle-line-first"></span>
+        <span class="toggle-line toggle-line-middle"></span>
+        <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">MeeGle's Notes</h1>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <section class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#什么是架构"><span class="nav-number">1.</span> <span class="nav-text">什么是架构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#几个概念"><span class="nav-number">2.</span> <span class="nav-text">几个概念</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#架构-与-设计"><span class="nav-number">2.1.</span> <span class="nav-text">架构 与 设计</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#系统-和-子系统"><span class="nav-number">2.2.</span> <span class="nav-text">系统 和 子系统</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#模块-和-组件"><span class="nav-number">2.3.</span> <span class="nav-text">模块 和 组件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#框架-和-架构"><span class="nav-number">2.4.</span> <span class="nav-text">框架 和 架构</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#架构的分类"><span class="nav-number">3.</span> <span class="nav-text">架构的分类</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#按关注角度划分"><span class="nav-number">3.1.</span> <span class="nav-text">按关注角度划分</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#TOGAF架构域"><span class="nav-number">3.2.</span> <span class="nav-text">TOGAF架构域</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#常见的软件架构"><span class="nav-number">4.</span> <span class="nav-text">常见的软件架构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#分层架构（Layered-Architecture）"><span class="nav-number">4.1.</span> <span class="nav-text">分层架构（Layered Architecture）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#事件驱动架构（Event-Driven-Architecture）"><span class="nav-number">4.2.</span> <span class="nav-text">事件驱动架构（Event-Driven Architecture）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#微核架构（Microkernel-Architecture）"><span class="nav-number">4.3.</span> <span class="nav-text">微核架构（Microkernel Architecture）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#微服务架构（Microservices-Architecture）"><span class="nav-number">4.4.</span> <span class="nav-text">微服务架构（Microservices Architecture）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#基于空间的架构（Space-Based-Architecture）"><span class="nav-number">4.5.</span> <span class="nav-text">基于空间的架构（Space-Based Architecture）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#常见的架构模式"><span class="nav-number">5.</span> <span class="nav-text">常见的架构模式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#架构的演进"><span class="nav-number">6.</span> <span class="nav-text">架构的演进</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#几个问题"><span class="nav-number">7.</span> <span class="nav-text">几个问题</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#MVC、MVP-和-MVVM-有什么区别？"><span class="nav-number">7.1.</span> <span class="nav-text">MVC、MVP 和 MVVM 有什么区别？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#DAO、ORM、ActiveRecord-有什么区别？"><span class="nav-number">7.2.</span> <span class="nav-text">DAO、ORM、ActiveRecord 有什么区别？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SOA-和-微服务架构有什么区别？"><span class="nav-number">7.3.</span> <span class="nav-text">SOA 和 微服务架构有什么区别？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#什么是数据网格？与-RDBMS-和-NoSQL-有什么区别？"><span class="nav-number">7.4.</span> <span class="nav-text">什么是数据网格？与 RDBMS 和 NoSQL 有什么区别？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#正向代理-和-反向代理"><span class="nav-number">7.5.</span> <span class="nav-text">正向代理 和 反向代理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#云计算跟-TOGAF-是什么关系？"><span class="nav-number">7.6.</span> <span class="nav-text">云计算跟 TOGAF 是什么关系？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#架构师的职业素养"><span class="nav-number">8.</span> <span class="nav-text">架构师的职业素养</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考资料"><span class="nav-number">9.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </section>
+      <!--/noindex-->
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Meegle"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">Meegle</p>
+  <div class="site-description" itemprop="description">Just do it!</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">7</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">13</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </section>
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </header>
+
+      
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+  <a href="https://github.com/meegle" class="github-corner" title="Follow me on GitHub" aria-label="Follow me on GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a>
+
+<noscript>
+  <div id="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+      <div class="main-inner">
+        
+
+        <div class="content post posts-expand">
+          
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://meegle.github.io/2020/09/28/software-architecture/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Meegle">
+      <meta itemprop="description" content="Just do it!">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="MeeGle's Notes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          日常说的架构到底指什么
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-09-28 20:05:11 / 修改时间：20:30:10" itemprop="dateCreated datePublished" datetime="2020-09-28T20:05:11+08:00">2020-09-28</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%9E%B6%E6%9E%84/" itemprop="url" rel="index"><span itemprop="name">架构</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>架构，貌似对我们来说并不陌生，因为工作中时不时会提到架构，如今市面上也有各种XXX架构师的职位。<br>更多时候我们还会调侃架构师只是一群画图做PPT的人…但，我们真的理解什么是架构吗？<br>确实有必要梳理下概念，有个整体的认识，以便更好的深耕细分领域，共勉！</p>
+<h2 id="什么是架构"><a href="#什么是架构" class="headerlink" title="什么是架构"></a>什么是架构</h2><p>架构这个词起源于建筑，是一个比较宽泛的概念，业内也未有标准的定义。</p>
+<blockquote>
+<p>架构，又名软件架构，是有关软件整体结构与组件的抽象描述，用于指导大型软件系统各个方面的设计。– 摘自百度百科</p>
+</blockquote>
+<p>软件架构（Software Architecture）是一系列相关的抽象模式，从本质上来看，属于一种系统草图。</p>
+<h2 id="几个概念"><a href="#几个概念" class="headerlink" title="几个概念"></a>几个概念</h2><p>软件架构中几个有关系而又相似的概念。</p>
+<h3 id="架构-与-设计"><a href="#架构-与-设计" class="headerlink" title="架构 与 设计"></a>架构 与 设计</h3><blockquote>
+<p>所有架构都是设计，但并非所有设计都是架构。架构反映了使一个系统成型的重要设计决策，而重要性则通过改变的成本来衡量。</p>
+</blockquote>
+<p>从本质上讲，重要决策即架构，其他的都是设计。重要决策包括：</p>
+<ul>
+<li>系统的形态，eg. 客户端-服务器、基于Web、原生移动客户端、分布式、异步等等。</li>
+<li>软件系统的结构，eg. 组件、层、交互等等。</li>
+<li>技术选择，eg. 编程语言、部署平台等等。</li>
+<li>框架选择，eg. Web MVC框架、持久层/ORM框架等等。</li>
+<li>设计方法/模式选择，eg. 针对性能、可伸缩性、可用性等的方法。</li>
+</ul>
+<p>架构是软件的整体结构设计。</p>
+<h3 id="系统-和-子系统"><a href="#系统-和-子系统" class="headerlink" title="系统 和 子系统"></a>系统 和 子系统</h3><blockquote>
+<p>系统是由相互作用相互依赖的若干组成部分结合而成的，具有特定功能的有机整体，而且这个有机整体又是它从属的更大系统的组成部分。– 摘自百度百科</p>
+</blockquote>
+<p>系统是一个可以独立存在的完整实体，由一组完成特定任务的功能组成。<br>系统和子系统的概念是相对的，当作为另一个系统的一部分时，系统就成为一个子系统。<br>比如电商系统有支付系统、订单系统、用户系统等等子系统。</p>
+<h3 id="模块-和-组件"><a href="#模块-和-组件" class="headerlink" title="模块 和 组件"></a>模块 和 组件</h3><p>模块和组件都是系统的组成部分，只是从不同的角度拆分系统：</p>
+<ul>
+<li>从逻辑层面，系统可拆分为各个模块，如 登录注册模块、权限管理模块等；划分模块是为了职责分离。</li>
+<li>从物理层面，系统可拆分为各个组件，如 Web服务器、数据库、缓存中间件等；划分组件是为了单元复用。</li>
+</ul>
+<p>另，模块和系统一般情况下没有本质区别，但是不能独立工作的模块一般不称之为系统。</p>
+<h3 id="框架-和-架构"><a href="#框架-和-架构" class="headerlink" title="框架 和 架构"></a>框架 和 架构</h3><blockquote>
+<p>软件框架（Software Framework），通常指的是为了实现某个业界标准或完成特定基本任务的软件组件规范，也指为了实现某个软件组件规范时，提供规范所要求之基础功能的软件产品。– 摘自百度百科</p>
+</blockquote>
+<p>框架是组件规范，eg. MVC、MVP、MVVM等开发规范；框架是提供基础功能的产品，eg. 国际化、日志记录等等。<br>框架关注的是“规范”，架构关注的是“结构”。<br>但很多时候，并没有完全界定，或者说框架是架构的具体实施。</p>
+<a id="more"></a>
+
+<h2 id="架构的分类"><a href="#架构的分类" class="headerlink" title="架构的分类"></a>架构的分类</h2><h3 id="按关注角度划分"><a href="#按关注角度划分" class="headerlink" title="按关注角度划分"></a>按关注角度划分</h3><ul>
+<li>逻辑架构<br>软件系统中元件之间的关系，如用户界面，数据库，外部系统接口，商业逻辑元件等。</li>
+<li>物理架构<br>软件元件是怎样放到硬件上的。关注基础设施，如应用服务器、代理服务器、存储服务器、报表服务器、WEB服务器、网络分流器等。</li>
+<li>系统架构<br>系统的非功能性特征，如可扩展性、可靠性、强壮性、灵活性、性能等。</li>
+</ul>
+<p>构架由许多不同的构架视图来表示，这些视图本质上是以图形方式来摘要说明“在构架方面具有重要意义”的模型元素。<br><strong>4+1 视图模型</strong> 是比较典型的架构视图集，最早由 Philippe Kruchten 提出，最终被 RUP 采纳，现已成为架构设计的结构标准。<br><img src="/images/4+1-view-model.png" alt="alt"><br>“4+1”视图 从5个不同的视角来描述软件体系结构，包括：</p>
+<ul>
+<li>逻辑视图（Logical View）<br>主要支持功能需求，使用面向对象进行分解。可以用UML的 <strong>类图</strong>、<strong>组件图</strong>、<strong>E-R图</strong> 来绘制。<strong>DDD领域驱动设计</strong> 属于面向对象的分解方法。</li>
+<li>处理视图（Process View）<br>描述软件内各组件之间的通信时序，数据的输入输出，反映系统的功能流程与数据流程，通常用 <strong>时序图</strong> 和 <strong>流程图</strong> 来表示。<br>同时考虑非功能性需求，比如三高（高性能、高并发、高可用），并指导如何把逻辑视图的抽象融入到处理视图中，比如哪个线程来控制对象的实际执行。</li>
+<li>开发视图（Development View）<br>关注软件开发环境下实际模块的组织。软件打包成小的程序块（程序库或子系统），子系统可以组织成分层结构，每一层为上一层提供良好定义的接口。<br>开发视图用模块和子系统来表达，展示输入输出关系。参考 <a href="https://www.jdon.com/artichect/c4-model.html" target="_blank" rel="noopener">C4模型</a> 和 <a href="https://www.jdon.com/artichect/the-clean-architecture.html" target="_blank" rel="noopener">整洁架构（The Clean Architecture）</a>。</li>
+<li>物理视图（Physical View）<br>主要描述软件到硬件的映射。在UML中通常被称为 <strong>部署图</strong>。<br>通常需要针对不同的阶段（开发、测试、生产等）或不同的客户（PC端、移动端等）使用不同的物理配置，因此需要高度灵活以及对程序本身产生最小影响的运行平台，云计算和Docker之类的PaaS能够满足这样的要求。</li>
+<li>场景（Scenarios）<br>四个视图中的元素通过场景进行无缝协同工作，场景可以 <strong>用例图</strong>、<strong>活动图</strong> 等UML图来表示。</li>
+</ul>
+<p>每个视图只关心系统的一个侧面，5个视图结合在一起才能反映系统的软件体系结构的全部内容。</p>
+<h3 id="TOGAF架构域"><a href="#TOGAF架构域" class="headerlink" title="TOGAF架构域"></a>TOGAF架构域</h3><p>TOGAF，全称 The Open Group Architecture Framework（开放组体系结构框架），由国际标准权威组织 The Open Group 制定，是用于开发企业架构（Enterprise Architecture，简称 EA）的一套方法和工具。<br>最新版 TOGAF 9.2 于2018年4月发布（1995年开发、2009年推出TOGAF 9、2012年6月实施TOGAF 9.1），包括：架构开发方法（ADM）、架构能力框架、架构指引和技术、架构内容框架、企业连续系列和工具等一系列组件。其中，ADM是核心内容，详细介绍了构建企业架构所需要执行的各个步骤。<br><img src="/images/togaf.png" alt="alt"><br>TOGAF的架构内容框架中定义了4个架构域：</p>
+<ul>
+<li>业务架构（Business Architecture）<br>业务架构定义了业务策略、治理、组织和关键业务过程。它是企业架构的核心内容，承接了企业的战略，直接决定了企业战略的实现能力，是其他架构领域工作的前提条件。</li>
+<li>数据架构（Data Architecture）<br>数据架构描述了企业的逻辑物理数据资产和数据管理资源的结构。</li>
+<li>应用架构（Application Architecture）<br>应用架构为要部署的单个应用系统、它们之间的交互和它们与组织的核心业务流程之间的关系提供蓝图。应用架构和数据架构一起合称为信息系统架构。</li>
+<li>技术架构（Technology Architecture）<br>技术架构描述了需要支持业务、数据和应用服务的部署的逻辑软硬件能力，包括IT基础设施、中间件、网络、通信、流程、标准等。</li>
+</ul>
+<p>更多介绍内容可以参看《<a href="http://ea.zhoujingen.cn/4670.html" target="_blank" rel="noopener">TOGAF概述及认证</a>》。</p>
+<h2 id="常见的软件架构"><a href="#常见的软件架构" class="headerlink" title="常见的软件架构"></a>常见的软件架构</h2><p>O‘Reilly 出版的免费电子书《<a href="http://www.oreilly.com/programming/free/files/software-architecture-patterns.pdf" target="_blank" rel="noopener">Software Architecture Patterns</a>》（2015年2月出版，2017年6月第3次修订）介绍了5种常见的软件架构：</p>
+<h3 id="分层架构（Layered-Architecture）"><a href="#分层架构（Layered-Architecture）" class="headerlink" title="分层架构（Layered Architecture）"></a>分层架构（Layered Architecture）</h3><p>分层架构是最常见的软件架构。一般分4层：</p>
+<ul>
+<li>表现层（Presentation）：用户界面，负责视觉和用户互动。</li>
+<li>业务层（Business）：实现业务逻辑。</li>
+<li>持久层（Persistence）：提供数据，SQL语句就放在这一层。</li>
+<li>数据库（Database）：保存数据。</li>
+</ul>
+<p>MVC的View层对应表现层、Dao层对应持久层、Controller层对应业务层，有时候一些MVC框架会根据需要在Dao和Controller之间加一层Service层，主要为简化和复用业务逻辑。</p>
+<h3 id="事件驱动架构（Event-Driven-Architecture）"><a href="#事件驱动架构（Event-Driven-Architecture）" class="headerlink" title="事件驱动架构（Event-Driven Architecture）"></a>事件驱动架构（Event-Driven Architecture）</h3><p>事件驱动架构是通过事件进行通信的软件架构，主要包含4部分：</p>
+<ul>
+<li>事件队列（event queue）：接收事件的入口。</li>
+<li>分发器（event mediator）：将不同的事件分发到不同的业务逻辑单元。</li>
+<li>事件通道（event channel）：分发器与处理器之间的联系渠道。</li>
+<li>事件处理器（event processor）：实现业务逻辑，处理完成后会发出事件，触发下一步操作。</li>
+</ul>
+<p>实现事件驱动架构最简单、直观的方式就是使用消息。<br>严格来讲，事件和消息不是一个概念：消息代表非直接交互时简短的信息，而事件往往代表状态的显著变化。<br>但，实际中，一个消息往往同时包含了事件和数据，eg. 订单创建成功后，系统发出消息，包含下单成功事件和订单ID等数据。<br>所以，消息中间件经常被用于事件驱动的架构实现。</p>
+<h3 id="微核架构（Microkernel-Architecture）"><a href="#微核架构（Microkernel-Architecture）" class="headerlink" title="微核架构（Microkernel Architecture）"></a>微核架构（Microkernel Architecture）</h3><p>微核架构，又称插件架构，指的是软件的内核相对较小，主要功能和业务逻辑都通过插件实现。<br>内核通常只包含系统运行的最小功能。插件间彼此独立、较少通信，避免出现互相依赖的问题。<br>微核架构的最佳示例是Eclipse IDE：核心是一个编辑器，而只有在添加了各种插件之后，才成为一个高度可定制的、实用的产品。</p>
+<h3 id="微服务架构（Microservices-Architecture）"><a href="#微服务架构（Microservices-Architecture）" class="headerlink" title="微服务架构（Microservices Architecture）"></a>微服务架构（Microservices Architecture）</h3><p>微服务是一种分布式系统解决方案，主要围绕业务，领域建模。<br>微服务的特点是 - 小，专注做好一件事 &amp; 自治性（松耦合、API通信）。<br>即，每一个服务就是一个独立的部署单元，这些单元都是分布式的，互相解耦，通过远程通信协议（比如REST、SOAP）联系。</p>
+<h3 id="基于空间的架构（Space-Based-Architecture）"><a href="#基于空间的架构（Space-Based-Architecture）" class="headerlink" title="基于空间的架构（Space-Based Architecture）"></a>基于空间的架构（Space-Based Architecture）</h3><p>基于空间的架构，也称 <strong>云架构</strong>，主要解决扩展性和并发的问题，是最容易扩展的架构。<br>业务处理能力封装成一个个处理单元，按访问量增减，以此来解决伸缩性问题。<br>高扩展性是通过去除中心数据库的限制，并使用 <strong>数据网格</strong> 来替代。<br><img src="/images/space-based_architecture.png" alt="alt"> <img src="/images/process-unit.png" alt="alt"><br>云架构有两个主要的模块：处理单元（Processing Unit） 和 虚拟化中间件（Virtualized Middleware）。<br>典型的处理单元包括应用模块、内存中数据（In-Memory Data）、为应用失败时准备的异步数据持久化模块 和 数据复制引擎（Data-Replication Engine，使得虚拟化中间件可以将处理单元修改的数据复制到其他活动的处理单元）。<br>虚拟化中间件本质上是架构的控制器，它管理请求、会话、数据复制、分布式的请求处理和处理单元的部署，包含4个架构组件：</p>
+<ul>
+<li>通信网格（Messaging Grid）<br>管理用户请求和会话信息，当一个请求进来以后，决定分配给哪一个处理单元。</li>
+<li>数据网格（Data Grid）<br>与各个处理单元的数据复制引擎交互，低延时（通常为微秒级）、异步并行的将数据复制到每一个处理单元（即 数据同步），以保障每个处理单元都有相同的内存中数据。</li>
+<li>处理网格（Processing Grid）<br>可选，如果一个请求涉及不同类型的处理单元，该中间件负责协调处理单元，充当处理单元见数据传递的媒介。</li>
+<li>部署管理器（Deployment Manager）<br>负责处理单元的动态启动和关闭，监控负载和响应时间，根据负载大小自动伸缩处理单元实例，是实现可变伸缩性需求的关键。</li>
+</ul>
+<h2 id="常见的架构模式"><a href="#常见的架构模式" class="headerlink" title="常见的架构模式"></a>常见的架构模式</h2><blockquote>
+<p>架构模式是一个通用的、可重用的解决方案，用于解决在给定上下文的软件体系结构中经常出现的问题。架构模式与软件设计模式类似，但具有更广泛的范围。– 摘自维基百科</p>
+</blockquote>
+<ul>
+<li>分层模式<br>抽象是计算机科学中最为重要的概念之一。计算机系统提供不同层次的抽象表示，来隐藏实际实现的复杂性：<br><img src="/images/computer-system-layering.png" alt="alt"><blockquote>
+<p>指令集是对CPU的抽象，文件是对I/O设备的抽象，虚拟内存是对程序存储器的抽象，进程是对一个正在运行的程序的抽象，而虚拟机是对整个计算机的抽象，包括操作系统、处理器和程序。– 《深入理解计算机系统》</p>
+</blockquote>
+</li>
+</ul>
+<p>分层是抽象的一种，通过层次把复杂的、可能变化的东西隔离开来，只能上下访问不能跨层访问，每一层都为下一层提供更高层次的服务。<br>比如，信息系统一般可划分为表示层（UI层）、应用层（服务层）、业务逻辑层（领域层）、数据访问层（持久化层）。</p>
+<ul>
+<li>客户端-服务端模式<br>即，C/S（Client/Server）架构，桌面应用程序时期尤为盛行，随着互联网的兴起，B/S（Browser/Server）架构大行其道，但本质上是轻客户端的C/S架构。</li>
+<li>主从设备模式<br>基于<strong>分而治之的思想</strong>，将任务分解为若干个语义等同的子任务，主设备分派子任务给各从设备，并整合各子任务处理结果。<br>在分布式系统中尤为常见，如分布式计算（eg. MapReduce）、分布式文件系统（eg. HDFS）等等。</li>
+<li>管道-过滤器模式<br>管道-过滤器模式的体系结构是面向数据流的软件体系结构，最典型的应用是在编译系统。<br>一个普通的编译系统包括词法分析器、语法分析器、语义分析与中间代码生成器、优化器、目标代码生成器等一系列对源程序进行处理的过程。<br>可以将编译系统看作一系列过滤器的连接体，按照管道-过滤器的体系结构进行设计。<br>此模式类似于GoF设计模式中的责任链模式。</li>
+<li>代理模式<br>用于构造具有解耦组件的分布式系统。<br>代理组件负责协调服务之前的通信：服务器向代理发布功能（服务和特征），客户端向代理请求服务，然后代理将客户端重定向到合适的服务。<br>eg. 微服务架构中，客户端请求网关（API Gateway），网关去注册中心查询服务地址，把请求转发给具体服务，即，网关+注册中心起到了反向代理的作用。<br>此模式类似于GoF设计模式中的代理模式。</li>
+<li>点对点模式<br>即，P2P（Peer to Peer），单个组件被称为对等点。<br>对等点既可以作为客户端，从其他对等点请求服务；也可以作为服务器，为其他对等点提供服务。<br>P2P在下载（eg. BT）、区块链、分布式存储（eg. IPFS）等都有广泛应用。</li>
+<li>事件总线模式<br>事件总线模式是一种广泛运用于Android开发的软件架构模式，包括4个主要组件：事件源、事件监听器、通道和事件总线。<br>事件源将产生的消息发送到事件总线的特定通道，监听器会事先订阅事件总线的不同的通道以区分消息的响应，然后当消息被发送到事件总线的特定通道时，对应的监听器会监听到消息，并执行在程序中与之绑定的响应函数。<br>此模式类似于GoF设计模式中的观察者模式。</li>
+<li>模型-视图-控制器模式<br>即，MVC（Model-View-Controller）模式，主要用在Web应用程序的软件体系结构，比如Web框架等。</li>
+<li>黑板模式<br>黑板模式是观察者模式的一个扩展，允许多个生产者/消费者共存，可以理解为消息的广播，主要解决生产者/消费者之间的耦合问题。<br>核心是消息存储，即黑板，它存储所有消息，并可以随时被读取。消费者只需要关注特定消息，不处理与自己无关的消息，这通常通过过滤器来实现。<br>黑板模式就好像多位不同的专家在同一块黑板上交流思想，每个专家都可以获得别的专家写在黑板上的信息，同时也可以用自己的分析去更新黑板上的信息，从而影响其它专家。<br>主要解决可分解成多个子问题，但每个子问题都属于不同的专业领域的问题，如视觉识别、图像识别、语音识别和监视等。<br>常见有两种实现方式：<ul>
+<li>数据库作为黑板：生产者更新数据，不同的消费者共享数据库中的信息。</li>
+<li>消息队列作为黑板：通过订阅-发布模型实现，即，消息主动推送给消费者。</li>
+</ul>
+</li>
+<li>解释器模式<br>类比GoF设计模式中的解释器模式。<br>所谓解释器模式，即，给定一门语言，定义它的文法的一种表示，并定义一个解释器，该解释器使用该表示来解释语言中的句子。<br>主要用于一些需要解释执行的场景，比如SQL语句，解释器分析SQL语句的文法，识别想要查找的数据元素并把它提取出来。</li>
+</ul>
+<h2 id="架构的演进"><a href="#架构的演进" class="headerlink" title="架构的演进"></a>架构的演进</h2><p>架构的核心价值在于能结合当下设计出最佳的体系结构，所以需要架构的演化以支撑不断变化的业务。<br>以服务端为例，基本是从 单体 到 分布式，最终上云。<br>若为分层架构，则每一层都可以进行横向或纵向的扩展。<br>常见的技术思路和演化过程可以参考<a href="https://segmentfault.com/a/1190000018626163" target="_blank" rel="noopener">这篇文章</a>。</p>
+<h2 id="几个问题"><a href="#几个问题" class="headerlink" title="几个问题"></a>几个问题</h2><h3 id="MVC、MVP-和-MVVM-有什么区别？"><a href="#MVC、MVP-和-MVVM-有什么区别？" class="headerlink" title="MVC、MVP 和 MVVM 有什么区别？"></a>MVC、MVP 和 MVVM 有什么区别？</h3><ul>
+<li>MVC，Model（模型）-View（视图）-Controller（控制器）<br>我们目前用的大部分Web框架都是MVC模式。<br>Model层，有时候包含DAO和ORM，再在这之上构建模型对象，eg. Java的Bean。<br>Controller层，有时候为了逻辑复用会分离出Service层。<br>View层，大多用模板引擎来渲染生成最终的HTML，但随着前端的发展及多终端述求，慢慢的从后端分离出去了，eg. 前后端分离结构。<br>虽说MVC中的View和Model可以交互，但一般不建议这样做，否则会增加代码耦合。</li>
+<li>MVP，Model（模型）-View（视图）-Presenter（表示器）<br>不同于MVC，MVP中的View不能直接访问Model，而是通过Presenter来调用。<br>Presenter负责接收View的输入并调用Model进行展示逻辑处理再反馈给View进行渲染，可以类比MVC中的Controller。<br>MVP模式在Android开发中运用的较多。</li>
+<li>MVVM，Model-View-ViewModel<br>ViewModel是Model和View的双向数据绑定，随着前端的发展，MVVM框架逐步盛行，eg. AngularJS、Vue.js等。<br>顺便提一下，Angular是通过指定事件触发脏检测实现双向绑定；<br>Vue是通过数据劫持（主要通过 <code>Object.defineProperty</code> 监听属性变化触发更新视图）与发布订阅相结合的方式实现双向绑定。</li>
+</ul>
+<h3 id="DAO、ORM、ActiveRecord-有什么区别？"><a href="#DAO、ORM、ActiveRecord-有什么区别？" class="headerlink" title="DAO、ORM、ActiveRecord 有什么区别？"></a>DAO、ORM、ActiveRecord 有什么区别？</h3><p>DAO（Data Access Object，数据访问对象），抽象的数据访问接口，为不同的数据库提供统一的API。<br>ORM（Object-Relational Mapping，对象关系映射），把数据库里的数据映射为对象，用面向对象的方式访问数据库；<br>有些称 持久化框架，提供更多能力，如缓存处理、事务管理等，eg. Java中的MyBatis。<br>ActiveRecord（活动记录）是一种领域模型模式，兼具ORM能力。</p>
+<h3 id="SOA-和-微服务架构有什么区别？"><a href="#SOA-和-微服务架构有什么区别？" class="headerlink" title="SOA 和 微服务架构有什么区别？"></a>SOA 和 微服务架构有什么区别？</h3><p>SOA，全称 Service-Oriented Architecture，即 面向服务架构，服务间通过网络调用。<br>传统的SOA，如ESB（Enterprise Service Bus，企业服务总线）；微服务架构是SOA的升级。<br>ESB和微服务都是SOA的具体实现，但ESB注重服务聚合，微服务注重服务拆分。</p>
+<h3 id="什么是数据网格？与-RDBMS-和-NoSQL-有什么区别？"><a href="#什么是数据网格？与-RDBMS-和-NoSQL-有什么区别？" class="headerlink" title="什么是数据网格？与 RDBMS 和 NoSQL 有什么区别？"></a>什么是数据网格？与 RDBMS 和 NoSQL 有什么区别？</h3><p>数据网格，又称 In-Memory Data Grid，IMDG，一般放在数据库之前，Web应用访问IMDG而不是数据库。<br>IMDG中的数据是一种可切分数据格式的领域对象模型，并且异步批量持久化到数据库。<br>一般使用ORM框架将IMDG中对象数据和RDBMS进行映射，eg. Hibernate、OpenJPA。<br>数据网格采用内存作为主要存储，意在低延迟，而NoSQL一般为分布式持久化存储，意在解决吞吐量。</p>
+<h3 id="正向代理-和-反向代理"><a href="#正向代理-和-反向代理" class="headerlink" title="正向代理 和 反向代理"></a>正向代理 和 反向代理</h3><p>正向反向指的是代理对象不同：</p>
+<ul>
+<li>正向代理指客户端通过代理访问服务器，意在隐藏真实的请求客户端，FQ软件实际就是一个正向代理。</li>
+<li>反向代理指服务器通过代理对外提供服务，意在隐藏真实的服务端，Nginx就是性能非常好的反向代理服务器，用来做负载均衡。</li>
+</ul>
+<h3 id="云计算跟-TOGAF-是什么关系？"><a href="#云计算跟-TOGAF-是什么关系？" class="headerlink" title="云计算跟 TOGAF 是什么关系？"></a>云计算跟 TOGAF 是什么关系？</h3><p>云计算大致分为三类：IaaS（Infrastructure as a Service，基础设施即服务）、PaaS（Platform as a Service，平台即服务）、SaaS（Software as a Service，软件即服务）。<br>其中，IaaS可以对应到TOGAF的技术架构部分，即用IaaS作为企业的技术架构。<br>同样，PaaS对应IT架构（包括应用、数据、技术架构），企业可以在PaaS平台上快速、高质量的开发和实施企业级应用。<br>SaaS在业务架构层面为企业提供完整的软件或系统（eg. ERP、CRM等等），即无需关心IT架构，直接进行业务建模。</p>
+<h2 id="架构师的职业素养"><a href="#架构师的职业素养" class="headerlink" title="架构师的职业素养"></a>架构师的职业素养</h2><p>美团技术团队的<a href="https://tech.meituan.com" target="_blank" rel="noopener">博客</a>里有一篇<a href="https://tech.meituan.com/2018/04/16/study-vs-work.html" target="_blank" rel="noopener">文章</a>提到了架构师能力模型：<br><img src="/images/architect-competency.png" alt="alt"><br>总归来说，基于底层技术能力，逐步掌控提升技术领导力和项目/团队统筹管理能力。</p>
+<ul>
+<li>编程能力<br>编程能力是技术人的基本功，本质上是把业务需求转换成机器语言。常见的如精通面向对象、设计模式等。</li>
+<li>调试能力<br>调试是为了保障高质量的交付，良好的调试能力是高效编程的前提，如今可以借助于各种IDE里集成的调试工具来简化。</li>
+<li>编译部署能力<br>运行环境的搭建及相关配置的调优，得益于CI/CD之类的工具，编译部署的工作简化了许多，但还是需要了解每个环节。</li>
+<li>性能优化能力<br>为了提升体验，需要不断调优系统性能，各种性能指标的优化考核着综合技术能力，甚至于很多时候需要结合业务做权衡取舍。</li>
+<li>在线运维能力<br>本质上是为了预防及快速解决线上故障，通常涉及监控、告警、快速恢复等，考验着技术细节、业务场景、处理规范等，需要通过大量实践来提升。</li>
+<li>业务架构能力<br>架构是为了保障系统具备良好的伸缩以适应快速变化的市场需求，所以，了解业务、洞悉真实述求是架构的前提。<br>把抽象需求转换为可行的架构实施是架构师走向卓越的核心。</li>
+<li>项目管理能力<br>通过运用完整的项目管理体系来保障项目实施，这是对事的全局掌控。<br>项目管理涵盖了较多的软实力要求，比如计划制定、过程推进、沟通协同、高效会议、风险把控、难点攻关等等。<br>具体到如敏捷开发（研发管理）、SMART原则（目标制定）、六顶思考帽（高效会议）等等。</li>
+<li>团队管理能力<br>团队管理的一个核心是规划能力，包括项目规划和人员规划。<br>项目规划是为了制定符合多方利益的行动目标，以阶段性项目做推进。<br>所以，有的是自上而下拆解的项目，以符合公司的整体战略；有的是从自下而上制定的项目，以完善自身体系或补充上层目标。<br>人员规划本质是团队的能力配比，涵盖了人员培养、KPI/OKR、团队氛围（人员关系优化、技术分享…）等等。</li>
+</ul>
+<p>另，今天看到一篇微信推文，“有商业意识的技术人，才有未来！”，技术或许能一条道走到黑，但或许有商业意识才能有更高格局！</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><p>架构到底是指什么，<a href="https://zhuanlan.zhihu.com/p/57141837" target="_blank" rel="noopener">https://zhuanlan.zhihu.com/p/57141837</a><br>软件架构的4+1视角模型简介，<a href="https://www.jdon.com/artichect/4+1view-architecture.html" target="_blank" rel="noopener">https://www.jdon.com/artichect/4+1view-architecture.html</a><br>软件架构入门，<a href="http://www.ruanyifeng.com/blog/2016/09/software-architecture.html" target="_blank" rel="noopener">http://www.ruanyifeng.com/blog/2016/09/software-architecture.html</a><br>《软件架构模式》，<a href="https://www.codingsky.com/books/architecture-pattern/" target="_blank" rel="noopener">https://www.codingsky.com/books/architecture-pattern/</a><br>数据网格，<a href="https://www.jdon.com/artichect/scalable9.html" target="_blank" rel="noopener">https://www.jdon.com/artichect/scalable9.html</a><br><a href="https://segmentfault.com/a/1190000020220143" target="_blank" rel="noopener">软件架构漫谈：业务架构、应用架构与云基础架构</a><br>10种常见的软件架构模式，<a href="https://www.cnblogs.com/IcanFixIt/p/7518146.html" target="_blank" rel="noopener">https://www.cnblogs.com/IcanFixIt/p/7518146.html</a><br><a href="https://tech.meituan.com/2018/08/16/10-principles-for-engineers.html" target="_blank" rel="noopener">写给工程师的十条精进原则</a><br><a href="https://segmentfault.com/a/1190000018626163" target="_blank" rel="noopener">服务端高并发分布式架构演进之路</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84/" rel="tag"># 软件架构</a>
+              <a href="/tags/4-1%E8%A7%86%E5%9B%BE%E6%A8%A1%E5%9E%8B/" rel="tag"># 4+1视图模型</a>
+              <a href="/tags/TOGAF/" rel="tag"># TOGAF</a>
+              <a href="/tags/%E6%9E%B6%E6%9E%84%E5%B8%88/" rel="tag"># 架构师</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020/09/01/floating-point/" rel="prev" title="从一个浮点数运算说起">
+      <i class="fa fa-chevron-left"></i> 从一个浮点数运算说起
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+        </div>
+        
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Meegle</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
