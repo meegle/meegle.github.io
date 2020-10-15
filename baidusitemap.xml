@@ -1,31 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>http://meegle.github.io/software-architecture/</loc>
+    <loc>https://meegle.github.io/software-architecture/</loc>
     <lastmod>2020-09-28</lastmod>
   </url>
   <url>
-    <loc>http://meegle.github.io/floating-point/</loc>
+    <loc>https://meegle.github.io/floating-point/</loc>
     <lastmod>2020-09-01</lastmod>
   </url>
   <url>
-    <loc>http://meegle.github.io/io-multiplexing/</loc>
+    <loc>https://meegle.github.io/io-multiplexing/</loc>
     <lastmod>2020-08-07</lastmod>
   </url>
   <url>
-    <loc>http://meegle.github.io/character-encoding/</loc>
+    <loc>https://meegle.github.io/character-encoding/</loc>
     <lastmod>2020-07-16</lastmod>
   </url>
   <url>
-    <loc>http://meegle.github.io/rsync/</loc>
+    <loc>https://meegle.github.io/rsync/</loc>
     <lastmod>2020-07-08</lastmod>
   </url>
   <url>
-    <loc>http://meegle.github.io/transaction-acid/</loc>
+    <loc>https://meegle.github.io/transaction-acid/</loc>
     <lastmod>2020-07-08</lastmod>
   </url>
   <url>
-    <loc>http://meegle.github.io/distributed-transaction-solution/</loc>
+    <loc>https://meegle.github.io/distributed-transaction-solution/</loc>
     <lastmod>2020-07-08</lastmod>
   </url>
 </urlset> 
