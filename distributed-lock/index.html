@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.ico">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"meegle.github.io","root":"/","scheme":"Gemini","version":"8.0.0-rc.4","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="什么是分布式锁锁的作用是解决在并发情况下共享资源的互斥问题。（1）单机场景下（多线程）：部分语言已原生实现了多线程加锁控制，eg. Java 的 Synchronized。（2）分布式场景下：基于CAP定理，满足AP，通过 最终一致性 来保障C，所以，一般采用 分布式事务、分布式锁 等来保障数据的最终一致性。 锁的分类 线程是否需要对资源加锁 乐观锁：乐观地认为数据不会被修改，持有数据不会上锁，写">
+<meta property="og:type" content="article">
+<meta property="og:title" content="分布式锁">
+<meta property="og:url" content="https://meegle.github.io/distributed-lock/index.html">
+<meta property="og:site_name" content="MeeGle&#39;s Notes">
+<meta property="og:description" content="什么是分布式锁锁的作用是解决在并发情况下共享资源的互斥问题。（1）单机场景下（多线程）：部分语言已原生实现了多线程加锁控制，eg. Java 的 Synchronized。（2）分布式场景下：基于CAP定理，满足AP，通过 最终一致性 来保障C，所以，一般采用 分布式事务、分布式锁 等来保障数据的最终一致性。 锁的分类 线程是否需要对资源加锁 乐观锁：乐观地认为数据不会被修改，持有数据不会上锁，写">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://meegle.github.io/images/zk-distributed-lock.png">
+<meta property="article:published_time" content="2020-10-30T00:12:40.000Z">
+<meta property="article:modified_time" content="2020-10-30T00:24:14.074Z">
+<meta property="article:author" content="Meegle">
+<meta property="article:tag" content="分布式">
+<meta property="article:tag" content="锁">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://meegle.github.io/images/zk-distributed-lock.png">
+
+<link rel="canonical" href="https://meegle.github.io/distributed-lock/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>分布式锁 | MeeGle's Notes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <main class="main">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+        <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+        <span class="toggle-line toggle-line-first"></span>
+        <span class="toggle-line toggle-line-middle"></span>
+        <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">MeeGle's Notes</h1>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <section class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#什么是分布式锁"><span class="nav-number">1.</span> <span class="nav-text">什么是分布式锁</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#锁的分类"><span class="nav-number">2.</span> <span class="nav-text">锁的分类</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#乐观锁和悲观锁"><span class="nav-number">3.</span> <span class="nav-text">乐观锁和悲观锁</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#乐观锁"><span class="nav-number">3.1.</span> <span class="nav-text">乐观锁</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#版本号机制"><span class="nav-number">3.1.1.</span> <span class="nav-text">版本号机制</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#CAS"><span class="nav-number">3.1.2.</span> <span class="nav-text">CAS</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#悲观锁"><span class="nav-number">3.2.</span> <span class="nav-text">悲观锁</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#具体应用"><span class="nav-number">4.</span> <span class="nav-text">具体应用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#MySQL中的悲观锁"><span class="nav-number">4.1.</span> <span class="nav-text">MySQL中的悲观锁</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#共享锁"><span class="nav-number">4.1.1.</span> <span class="nav-text">共享锁</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#排他锁"><span class="nav-number">4.1.2.</span> <span class="nav-text">排他锁</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#间隙锁"><span class="nav-number">4.1.3.</span> <span class="nav-text">间隙锁</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Redis"><span class="nav-number">4.2.</span> <span class="nav-text">Redis</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#乐观锁：事务性流水线（watch-multi-exec）"><span class="nav-number">4.2.1.</span> <span class="nav-text">乐观锁：事务性流水线（watch &#x2F; multi &#x2F; exec）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#悲观锁：setnx-expire-del"><span class="nav-number">4.2.2.</span> <span class="nav-text">悲观锁：setnx &#x2F; expire &#x2F; del</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分布式锁的几种实现"><span class="nav-number">5.</span> <span class="nav-text">分布式锁的几种实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Redis-Redlock"><span class="nav-number">5.1.</span> <span class="nav-text">Redis - Redlock</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Zookeeper-临时有序节点"><span class="nav-number">5.2.</span> <span class="nav-text">Zookeeper - 临时有序节点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#数据库-乐观锁-amp-悲观锁"><span class="nav-number">5.3.</span> <span class="nav-text">数据库 - 乐观锁 &amp; 悲观锁</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#常见面试题集锦"><span class="nav-number">6.</span> <span class="nav-text">常见面试题集锦</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#几个问题"><span class="nav-number">7.</span> <span class="nav-text">几个问题</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#版本号机制和MySQL的RR隔离级别有冲突吗？"><span class="nav-number">7.1.</span> <span class="nav-text">版本号机制和MySQL的RR隔离级别有冲突吗？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#for-update-与-lock-in-share-mode-的区别"><span class="nav-number">7.2.</span> <span class="nav-text">for update 与 lock in share mode 的区别</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#lock-in-share-mode-与-select-有什么区别，如何选用？"><span class="nav-number">7.3.</span> <span class="nav-text">lock in share mode 与 select 有什么区别，如何选用？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考资料"><span class="nav-number">8.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </section>
+      <!--/noindex-->
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Meegle"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">Meegle</p>
+  <div class="site-description" itemprop="description">Just do it!</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">9</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">17</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </section>
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </header>
+
+      
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+  <a href="https://github.com/meegle" class="github-corner" title="Follow me on GitHub" aria-label="Follow me on GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a>
+
+<noscript>
+  <div id="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+      <div class="main-inner">
+        
+
+        <div class="content post posts-expand">
+          
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://meegle.github.io/distributed-lock/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Meegle">
+      <meta itemprop="description" content="Just do it!">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="MeeGle's Notes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          分布式锁
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-10-30 08:12:40 / 修改时间：08:24:14" itemprop="dateCreated datePublished" datetime="2020-10-30T08:12:40+08:00">2020-10-30</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%9E%B6%E6%9E%84/" itemprop="url" rel="index"><span itemprop="name">架构</span></a>
+                </span>
+            </span>
+
+          
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/distributed-lock/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/distributed-lock/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="什么是分布式锁"><a href="#什么是分布式锁" class="headerlink" title="什么是分布式锁"></a>什么是分布式锁</h2><p>锁的作用是解决在并发情况下共享资源的互斥问题。<br>（1）单机场景下（多线程）：部分语言已原生实现了多线程加锁控制，eg. Java 的 Synchronized。<br>（2）分布式场景下：基于CAP定理，满足AP，通过 最终一致性 来保障C，所以，一般采用 <strong>分布式事务</strong>、<strong>分布式锁</strong> 等来保障数据的最终一致性。</p>
+<h2 id="锁的分类"><a href="#锁的分类" class="headerlink" title="锁的分类"></a>锁的分类</h2><ul>
+<li>线程是否需要对资源加锁<ul>
+<li>乐观锁：乐观地认为数据不会被修改，持有数据不会上锁，写入时使用 CAS 判断，适用于<strong>读多写少</strong>的场景。</li>
+<li>悲观锁：悲观地认为数据会被修改，持有数据就会上锁。</li>
+</ul>
+</li>
+<li>多线程并发访问资源加锁实现细节，eg. Java 的 Synchronized<ul>
+<li>无锁：不加锁，用 CAS 控制资源读写。</li>
+<li>偏向锁：适用于同一线程多次访问的情况，通过 ThreadID 直接返回已获取的锁。</li>
+<li>轻量级锁：在偏向锁阶段，若多个线程同时访问，会撤销偏向锁，升级为轻量级锁，未获取到资源的线程会使用自旋获取锁。</li>
+<li>重量级锁：自旋到达一定次数还未获取锁，膨胀为重量级锁，管理多个线程。</li>
+</ul>
+</li>
+<li>资源已被锁定，线程是否阻塞<ul>
+<li>自旋锁：不阻塞，循环判断（此循环并不一定是程序中的循环语法，主要指持续占用CPU时间片）是否获取锁。<br>适应性自旋锁：自旋的时间/次数不再固定，而是由前一次在同一个锁上的自旋时间及锁的拥有者的状态来决定。<br>eg. 如果在同一个锁对象上，自旋等待刚刚成功获得过锁，并且持有锁的线程正在运行中，那么虚拟机就会认为这次自旋也是很有可能再次成功，进而它将允许自旋等待持续相对更长的时间；<br>如果对于某个锁，自旋很少成功获得过，那在以后尝试获取这个锁时将可能省略掉自旋过程，直接阻塞线程，避免浪费处理器资源。</li>
+<li>互斥锁：阻塞，等待重新调度获取锁。</li>
+</ul>
+</li>
+<li>多个线程是否能够共享一把锁：共享锁（eg. 信号量）、独占锁（又称 排他锁）。</li>
+<li>是否重复获取：<ul>
+<li>不可重入锁：若当前线程执行某个方法已经获取了锁，那么此线程中不允许再次获取同一个锁。</li>
+<li>可重入锁：线程可以重复获取同一个锁，eg. Java 的 ReentrantLock。</li>
+</ul>
+</li>
+</ul>
+<a id="more"></a>
+
+<h2 id="乐观锁和悲观锁"><a href="#乐观锁和悲观锁" class="headerlink" title="乐观锁和悲观锁"></a>乐观锁和悲观锁</h2><h3 id="乐观锁"><a href="#乐观锁" class="headerlink" title="乐观锁"></a>乐观锁</h3><p>读取时不上锁，写入时会判断数据是否被修改过。<br>常见有两种实现方案：版本号机制 和 CAS（Compare And Swap）。</p>
+<h4 id="版本号机制"><a href="#版本号机制" class="headerlink" title="版本号机制"></a>版本号机制</h4><p>比如在数据表中加一个 version 字段来实现：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> money,<span class="keyword">version</span> <span class="keyword">from</span> <span class="keyword">wallet</span> <span class="keyword">where</span> owner = <span class="string">'xiaoming'</span></span><br><span class="line"><span class="keyword">update</span> <span class="keyword">wallet</span> <span class="keyword">set</span> money = money + <span class="number">100</span>,<span class="keyword">version</span> = <span class="keyword">version</span> + <span class="number">1</span> <span class="keyword">where</span> owner = <span class="string">'xiaoming'</span> <span class="keyword">and</span> <span class="keyword">version</span> = <span class="number">1</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="CAS"><a href="#CAS" class="headerlink" title="CAS"></a>CAS</h4><p>CAS机制当中使用了3个基本操作数：内存地址V、旧的预期值A、要修改的新值B。<br>只有 A 和 内存地址V 当中的实际值相同时，才会将 内存地址V 对应的值修改为 B。<br>（1）<strong>CAS是硬件级别的原子操作</strong><br>CAS指令 在 Intel CPU 上称为 CMPXCHG 指令，它的作用是将指定内存地址的内容与所给的某个值相比，如果相等，则将其内容替换为指令中提供的新值，如果不相等，则更新失败。<br>这一比较并交换的操作是原子的，不可以被中断。<br>（2）ABA问题<br>即，值从 A -&gt; B -&gt; A。感觉好像也没啥毛病？！举个栗子：<br>小明在某网站上有200积分，由于网站BUG，减100的积分兑换被Double触发，开启了2个处理线程：都是获取当前值200，要执行减100的操作。<br>理想情况下，只有一个成功，但如果线程A成功后，线程B因某种原因还在阻塞；<br>若这时候，刚好有100积分入账（即现在又有200积分），则当B恢复运行，预期值和当前值对比相同，导致误操作。<br>如何解决？<strong>给变量加个版本号</strong>，即，不仅要比较 期望值A 和 地址V中的实际值，还要比较变量的版本号是否一致。</p>
+<ol>
+<li>假设地址V中存储着变量值A，当前版本号是01。</li>
+<li>线程1获得了当前值A和版本号01，想要更新为B时被阻塞了。</li>
+<li>期间，内存地址V中的变量发生了多次改变，版本号提升为03，但变量值仍然是A。</li>
+<li>线程1恢复运行，经比较，获得的值和地址V的实际值均为A，但版本号不相等，所以本次更新失败。</li>
+</ol>
+<p>Java中，AtomicStampedReference类就实现了用版本号做比较的CAS机制。</p>
+<h3 id="悲观锁"><a href="#悲观锁" class="headerlink" title="悲观锁"></a>悲观锁</h3><p>eg. MySQL 中的 读锁（共享锁） / 写锁（排他锁）。<br>通过事务进行读写加锁控制，eg.</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">set</span> autocommit = <span class="number">0</span> // 关闭自动提交</span><br><span class="line"><span class="keyword">begin</span> // 开始事务</span><br><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> <span class="keyword">wallet</span> <span class="keyword">where</span> owner = <span class="string">'xiaoming'</span> <span class="keyword">for</span> <span class="keyword">update</span> // 查询指定数据（加 排他锁）</span><br><span class="line"><span class="keyword">update</span> <span class="keyword">wallet</span> <span class="keyword">set</span> money = money + <span class="number">100</span> <span class="keyword">where</span> owner = <span class="string">'xiaoming'</span></span><br><span class="line"><span class="keyword">commit</span> // 提交事务</span><br></pre></td></tr></table></figure>
+<p>其他事务在这个事务提交之前都无法对这条数据进行操作，起到了独占的作用。</p>
+<h2 id="具体应用"><a href="#具体应用" class="headerlink" title="具体应用"></a>具体应用</h2><h3 id="MySQL中的悲观锁"><a href="#MySQL中的悲观锁" class="headerlink" title="MySQL中的悲观锁"></a>MySQL中的悲观锁</h3><h4 id="共享锁"><a href="#共享锁" class="headerlink" title="共享锁"></a>共享锁</h4><p>Shared Locks，S锁，又称 读锁，加S锁的所有线程只能对资源进行读操作。<br>在事务中用 <code>select ... lock in share mode</code>：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> username <span class="keyword">from</span> <span class="keyword">user</span> <span class="keyword">where</span> uid=<span class="comment">#&#123;uid&#125; lock in share mode;</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="排他锁"><a href="#排他锁" class="headerlink" title="排他锁"></a>排他锁</h4><p>Exclusive Locks，X锁，又称 写锁。<br>在事务中用 <code>select ... for update</code>：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> username <span class="keyword">from</span> <span class="keyword">user</span> <span class="keyword">where</span> uid=<span class="comment">#&#123;uid&#125; for update;</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="间隙锁"><a href="#间隙锁" class="headerlink" title="间隙锁"></a>间隙锁</h4><p>Gap Locks，不仅仅锁住所需要的行还会锁住一个范围的行，这个范围依据锁住的这行而定。<br>间隙锁只会出现在辅助索引上，唯一索引和主键索引是没有间隙锁；<strong>间隙锁（无论是共享锁还是排他锁）只会阻塞 INSERT 操作</strong>。<br>注：MySQL中 SELECT 默认不加锁、INSERT / DELETE / UPDATE 加排他锁（行锁 [ <strong>实际上是锁索引不是锁记录</strong> ]，<strong>不加索引条件则为表锁</strong>）。</p>
+<h3 id="Redis"><a href="#Redis" class="headerlink" title="Redis"></a>Redis</h3><h4 id="乐观锁：事务性流水线（watch-multi-exec）"><a href="#乐观锁：事务性流水线（watch-multi-exec）" class="headerlink" title="乐观锁：事务性流水线（watch / multi / exec）"></a>乐观锁：事务性流水线（watch / multi / exec）</h4><p>带 WATCH命令 的事务会将客户端和被监视的键在数据库 watched_keys 字典中进行关联，当键被修改，程序会将所有监视键的客户端 REDIS_DIRTY_CAS 标识打开。<br>在客户端提交 EXEC命令 时，会检查 REDIS_DIRTY_CAS 标识，标识打开事务将不会被执行。<br>注：每个Redis数据库都保存着一个 watched_keys 字典来保存被监控的健，字典值是一个链表，链表中记录了所有监视相应键的客户端。</p>
+<h4 id="悲观锁：setnx-expire-del"><a href="#悲观锁：setnx-expire-del" class="headerlink" title="悲观锁：setnx / expire / del"></a>悲观锁：setnx / expire / del</h4><p>setnx（SET if Not eXists）只会在健不存在的情况下为健设置值。<br>在取得锁之后，调用 expire命令 来为锁设置过期时间，使得Redis可以自动删除超时的锁。<br>（1）为了确保锁在客户端已经崩溃（在执行介于 setnx 和 expire 之间的时候崩溃是最糟糕的）的情况下仍然能够自动被释放，<strong>客户端会在尝试获取锁失败之后，检查锁的超时时间，并为未设置超时时间的锁设置超时时间</strong>。因此锁总会带有超时时间，并最终因为超时而自动被释放，使得其他客户端可以继续尝试获取已被释放的锁。<br>注：因为多个客户端在同一时间内设置的超时时间基本上都是相同的，所以<strong>即使有多个客户端同时为同一个锁设置超时时间，锁的超时时间也不会产生太大变化</strong>。<br>（2）Redis2.6.12 之后 set命令 支持 setnx+expire 的原子操作，即：<code>SET key-with-expire-and-NX &quot;hello&quot; EX 10086 NX</code>。<br>（3）另，如何避免误删呢？比如A线程执行太久，导致锁超时释放，B线程获取锁，这时候可能A线程刚好执行完调用DEL，就会把B刚获取的锁释放掉。<br>DEL时验证当前锁是否自己加的锁：在加锁的时候把当前的线程ID当做value（分布式的情况下，可以用UUID / 分布式ID），并在删除之前验证key对应的value是不是自己线程的ID。<br>注：_判断和释放是两个独立操作，为了原子性，可以用Lua脚本来实现_。<br>（4）上面说到，A线程执行太久，导致锁超时释放，B线程获取锁，如何避免呢？<br>可以给获取锁的当前线程开一个守护线程，<strong>用守护线程给快过期的锁“续航”</strong>。<br>eg. 比如锁超时时间为30s，那么守护线程可以在29s将expire延长10s，当A执行完成时显式关闭守护线程。</p>
+<h2 id="分布式锁的几种实现"><a href="#分布式锁的几种实现" class="headerlink" title="分布式锁的几种实现"></a>分布式锁的几种实现</h2><h3 id="Redis-Redlock"><a href="#Redis-Redlock" class="headerlink" title="Redis - Redlock"></a>Redis - Redlock</h3><p>Redis的部署方式：单机、Master-Slave + Sentinel选举、Cluster。<br>注：Sentinel保障主备高可用；Cluster保障多主备（高可用的同时分机存储）。<br>Master-Slave下，Master故障时主从切换，可能会出现锁丢失。<br>所以，Cluster集群，Redlock原理大致如下：<br>假设有5个（<strong>大于3的奇数个</strong>）Master节点，通过以下步骤获取一把锁：</p>
+<ol>
+<li>获取当前时间戳，单位是毫秒。</li>
+<li>轮流尝试在每个Master节点上创建锁，过期时间设置较短，一般就几十毫秒。</li>
+<li>尝试在大多数（超过半数）节点上建立一个锁，eg. 5个节点就要求是3个节点（n / 2 + 1）。</li>
+<li>客户端计算建立好锁的时间（锁的真正有效时间等于设置的有效时间减去获取锁所使用的时间），如果建立锁的时间小于超时时间，就算建立成功。</li>
+<li>若建锁失败，就依次删除节点上的锁。</li>
+<li>其他需要考虑的：出错重试、时钟漂移等细节问题。</li>
+</ol>
+<p>Redclock还是颇具争议的，可能还会存在不少的问题，无法保证加锁的过程一定正确：<br><a href="http://zhangtielei.com/posts/blog-redlock-reasoning.html" target="_blank" rel="noopener">http://zhangtielei.com/posts/blog-redlock-reasoning.html</a><br><a href="http://zhangtielei.com/posts/blog-redlock-reasoning-part2.html" target="_blank" rel="noopener">http://zhangtielei.com/posts/blog-redlock-reasoning-part2.html</a><br>推荐使用现成的 Redis Client，eg. Redission（Java）。</p>
+<h3 id="Zookeeper-临时有序节点"><a href="#Zookeeper-临时有序节点" class="headerlink" title="Zookeeper - 临时有序节点"></a>Zookeeper - 临时有序节点</h3><p>Znode 的一些特性：</p>
+<ul>
+<li>有序节点 - 按创建的时间顺序对节点名称进行编号。</li>
+<li>临时节点 / 持久节点 - 临时节点，即，会话结束或超时，自动删除；相对应的是 持久节点，节点一直存在除非明确删除。</li>
+<li>事件监听 - 创建 / 删除 / 数据修改 / 变更 等，都会触发监听事件。</li>
+</ul>
+<p>临时有序节点即按顺序创建的临时节点，当创建节点的客户端与zk断开连接后，临时节点会被删除，并触发监听事件。<br><img src="/images/zk-distributed-lock.png" alt="alt"></p>
+<ul>
+<li>首先，创建一个持久节点 ParentLock，线程1想要获得锁，需在 ParentLock 下创建一个临时有序节点 Lock/001。<br>之后，线程1查找 ParentLock 下所有临时有序节点并排序，判断 Lock/001 是否为顺序最靠前，若是第一个节点，则获得锁。</li>
+<li>线程2请求获得锁，在 ParentLock 下创建临时有序节点 Lock/002。<br>线程2查找 ParentLock 下所有临时有序节点并排序，发现 Lock/002 不是顺序最靠前；<br>于是，线程2向排在它前面的节点 Lock/001 注册 Watcher，用于监听 Lock/001 节点是否存在，同时抢锁失败进入等待。</li>
+<li>线程3请求获得锁，继续创建 Lock/003 并判断排序，同样向 Lock/002 注册 Watcher，监听 Lock/002 是否存在，同时抢锁失败进入等待，以此类推。</li>
+<li>当线程1任务结束显式调用命令删除 Lock/001，当然，若线程1在任务执行过程中崩溃了，一样会断开与zk的连接，Lock/001为临时节点，会自动删除。</li>
+<li>因线程2一直监听着 Lock/001 的存在状态，所以当 Lock/001 被删除时，线程2会立刻收到通知。<br>此时，线程2会再次确认 Lock/002 的排序，若编号最小，则线程2获得锁。</li>
+</ul>
+<h3 id="数据库-乐观锁-amp-悲观锁"><a href="#数据库-乐观锁-amp-悲观锁" class="headerlink" title="数据库 - 乐观锁 &amp; 悲观锁"></a>数据库 - 乐观锁 &amp; 悲观锁</h3><p><code>select ... for update</code> 若阻塞超时（innodb_lock_wait_timeout）会终止并报错。<br><a href="https://blog.csdn.net/u013256816/article/details/92854794" target="_blank" rel="noopener">https://blog.csdn.net/u013256816/article/details/92854794</a></p>
+<h2 id="常见面试题集锦"><a href="#常见面试题集锦" class="headerlink" title="常见面试题集锦"></a>常见面试题集锦</h2><ul>
+<li>Redis分布式锁操作的原子性，Redis内部是如何实现的？</li>
+<li><code>insert into ... select</code> 语句把生产服务器炸了<br>原因：条件字段没有索引，导致全表扫描，逐行加锁。<br><a href="https://mp.weixin.qq.com/s/3dticqm07HTvYC_HHqYq1Q" target="_blank" rel="noopener">https://mp.weixin.qq.com/s/3dticqm07HTvYC_HHqYq1Q</a></li>
+<li>如何解决库存超卖问题？</li>
+</ul>
+<h2 id="几个问题"><a href="#几个问题" class="headerlink" title="几个问题"></a>几个问题</h2><h3 id="版本号机制和MySQL的RR隔离级别有冲突吗？"><a href="#版本号机制和MySQL的RR隔离级别有冲突吗？" class="headerlink" title="版本号机制和MySQL的RR隔离级别有冲突吗？"></a>版本号机制和MySQL的RR隔离级别有冲突吗？</h3><p>MySQL的RR隔离级别：<br>读，一个事务里的select语句（普通select即为快照读）不会受到其他事务（不管其他事务有没有commit）的影响；<br>写，对一条记录而言，一个事务一旦update这条记录，其他事务只能等待这个事务commit才能update这条记录。<br>所以，虽然被并发的version字段通过select查不出来，但是在where条件语句中，这个字段会受到其他事务的影响，利用这点可以读到并发事务影响的数据，从而做出判断，防止覆盖。<br><a href="https://dev.mysql.com/doc/refman/8.0/en/innodb-transaction-isolation-levels.html" target="_blank" rel="noopener">https://dev.mysql.com/doc/refman/8.0/en/innodb-transaction-isolation-levels.html</a><br>注：<strong>update语句就是一个事务</strong>：mysql默认采用AutoCommit模式，也就是每个SQL都是一个事务，并不需要显式的执行事务；<br>若AutoCommit关闭，那么每个SQL都默认开启一个事务，但只有显式的执行commit，这个事务才会被提交。</p>
+<h3 id="for-update-与-lock-in-share-mode-的区别"><a href="#for-update-与-lock-in-share-mode-的区别" class="headerlink" title="for update 与 lock in share mode 的区别"></a>for update 与 lock in share mode 的区别</h3><ul>
+<li>for update，IX（意向排他锁，又称写锁）<br>并发时A的 for update 会阻塞B的 for update（排他读锁）及写，直到B获取锁或中止报错（innodb_lock_wait_timeout超时）。</li>
+<li>lock in share mode，IS（意向共享锁，又称读锁）<br>并发时A的 lock in share mode 不会阻塞B的 lock in share mode（共享读锁），但会阻塞B的 for update 及写，直到所有IS锁被释放。<br>若A有CUD（此时是阻塞的），则B有CUD时会中止失败（避免死锁）。<br>备注：“写”表示CUD，即 INSERT / UPDATE / DELETE；B表示其他事务；快照读（即，不加锁的SELECT）不受影响，CUD默认加排他锁。</li>
+</ul>
+<h3 id="lock-in-share-mode-与-select-有什么区别，如何选用？"><a href="#lock-in-share-mode-与-select-有什么区别，如何选用？" class="headerlink" title="lock in share mode 与 select 有什么区别，如何选用？"></a>lock in share mode 与 select 有什么区别，如何选用？</h3><p>上面我们知道，lock in share mode 不会阻塞其他事务的 lock in share mode，select（快照读）本身也不会，那为什么还需要 lock in share mode？<br>其实是看问题的切入点不同，其他事务用 lock in share mode，也是为了避免查询的数据被修改导致 幻读 / 脏读。<br>所以，如果 “其他事务” 中的查询没有这个顾虑，那完全可以用select，也能减少加锁的开销。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><p><a href="https://mp.weixin.qq.com/s/nRnQKhiSUrDKu3mz3vItWg" target="_blank" rel="noopener">漫画：什么是CAS机制？（进阶篇）</a><br><a href="https://mp.weixin.qq.com/s/8fdBKAyHZrfHmSajXT_dnA" target="_blank" rel="noopener">漫画：什么是分布式锁？</a><br><a href="https://mp.weixin.qq.com/s/u8QDlrDj3Rl1YjY4TyKMCA" target="_blank" rel="noopener">漫画：如何用Zookeeper实现分布式锁？</a><br><a href="https://www.cnblogs.com/backnullptr/p/12155812.html" target="_blank" rel="noopener">基于Redis的分布式锁和Redlock算法</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/" rel="tag"># 分布式</a>
+              <a href="/tags/%E9%94%81/" rel="tag"># 锁</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/js-oop-and-functional-programming/" rel="prev" title="JS的OOP与函数式编程">
+      <i class="fa fa-chevron-left"></i> JS的OOP与函数式编程
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+        </div>
+        
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Meegle</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+  
+  <script>
+    (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      bp.src = (curProtocol === 'https') ? 'https://zz.bdstatic.com/linksubmit/push.js' : 'http://push.zhanzhang.baidu.com/push.js';
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+    })();
+  </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/valine@1/dist/Valine.min.js', () => {
+    new Valine(Object.assign({
+      el  : '#valine-comments',
+      path: location.pathname,
+    }, {"enable":true,"appId":"0DFjQujwMejBjMdRN3BXBbV4","appKey":"K5U8WSiJMA4o3T1OR1k1J23J","placeholder":"写下你的评论...","avatar":"mm","meta":["nick","mail","link"],"pageSize":10,"language":"zh-cn","visitor":false,"comment_count":true,"recordIP":false,"serverURLs":null}
+    ));
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

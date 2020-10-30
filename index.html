@@ -180,7 +180,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">8</span>
+          <span class="site-state-item-count">9</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -193,7 +193,7 @@
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">16</span>
+        <span class="site-state-item-count">17</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -230,6 +230,120 @@
 
         <div class="content index posts-expand">
           
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://meegle.github.io/distributed-lock/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Meegle">
+      <meta itemprop="description" content="Just do it!">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="MeeGle's Notes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/distributed-lock/" class="post-title-link" itemprop="url">分布式锁</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-10-30 08:12:40 / 修改时间：08:24:14" itemprop="dateCreated datePublished" datetime="2020-10-30T08:12:40+08:00">2020-10-30</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%9E%B6%E6%9E%84/" itemprop="url" rel="index"><span itemprop="name">架构</span></a>
+                </span>
+            </span>
+
+          
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/distributed-lock/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/distributed-lock/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h2 id="什么是分布式锁"><a href="#什么是分布式锁" class="headerlink" title="什么是分布式锁"></a>什么是分布式锁</h2><p>锁的作用是解决在并发情况下共享资源的互斥问题。<br>（1）单机场景下（多线程）：部分语言已原生实现了多线程加锁控制，eg. Java 的 Synchronized。<br>（2）分布式场景下：基于CAP定理，满足AP，通过 最终一致性 来保障C，所以，一般采用 <strong>分布式事务</strong>、<strong>分布式锁</strong> 等来保障数据的最终一致性。</p>
+<h2 id="锁的分类"><a href="#锁的分类" class="headerlink" title="锁的分类"></a>锁的分类</h2><ul>
+<li>线程是否需要对资源加锁<ul>
+<li>乐观锁：乐观地认为数据不会被修改，持有数据不会上锁，写入时使用 CAS 判断，适用于<strong>读多写少</strong>的场景。</li>
+<li>悲观锁：悲观地认为数据会被修改，持有数据就会上锁。</li>
+</ul>
+</li>
+<li>多线程并发访问资源加锁实现细节，eg. Java 的 Synchronized<ul>
+<li>无锁：不加锁，用 CAS 控制资源读写。</li>
+<li>偏向锁：适用于同一线程多次访问的情况，通过 ThreadID 直接返回已获取的锁。</li>
+<li>轻量级锁：在偏向锁阶段，若多个线程同时访问，会撤销偏向锁，升级为轻量级锁，未获取到资源的线程会使用自旋获取锁。</li>
+<li>重量级锁：自旋到达一定次数还未获取锁，膨胀为重量级锁，管理多个线程。</li>
+</ul>
+</li>
+<li>资源已被锁定，线程是否阻塞<ul>
+<li>自旋锁：不阻塞，循环判断（此循环并不一定是程序中的循环语法，主要指持续占用CPU时间片）是否获取锁。<br>适应性自旋锁：自旋的时间/次数不再固定，而是由前一次在同一个锁上的自旋时间及锁的拥有者的状态来决定。<br>eg. 如果在同一个锁对象上，自旋等待刚刚成功获得过锁，并且持有锁的线程正在运行中，那么虚拟机就会认为这次自旋也是很有可能再次成功，进而它将允许自旋等待持续相对更长的时间；<br>如果对于某个锁，自旋很少成功获得过，那在以后尝试获取这个锁时将可能省略掉自旋过程，直接阻塞线程，避免浪费处理器资源。</li>
+<li>互斥锁：阻塞，等待重新调度获取锁。</li>
+</ul>
+</li>
+<li>多个线程是否能够共享一把锁：共享锁（eg. 信号量）、独占锁（又称 排他锁）。</li>
+<li>是否重复获取：<ul>
+<li>不可重入锁：若当前线程执行某个方法已经获取了锁，那么此线程中不允许再次获取同一个锁。</li>
+<li>可重入锁：线程可以重复获取同一个锁，eg. Java 的 ReentrantLock。</li>
+</ul>
+</li>
+</ul>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/distributed-lock/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
       
   
   
@@ -648,111 +762,6 @@
           <!--noindex-->
             <div class="post-button">
               <a class="btn" href="/io-multiplexing/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://meegle.github.io/character-encoding/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpg">
-      <meta itemprop="name" content="Meegle">
-      <meta itemprop="description" content="Just do it!">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="MeeGle's Notes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/character-encoding/" class="post-title-link" itemprop="url">字符编码那点事</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-              
-
-              <time title="创建时间：2020-07-16 22:16:53 / 修改时间：23:08:37" itemprop="dateCreated datePublished" datetime="2020-07-16T22:16:53+08:00">2020-07-16</time>
-            </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/" itemprop="url" rel="index"><span itemprop="name">基础知识</span></a>
-                </span>
-            </span>
-
-          
-  
-  <span class="post-meta-item">
-    
-      <span class="post-meta-item-icon">
-        <i class="far fa-comment"></i>
-      </span>
-      <span class="post-meta-item-text">Valine：</span>
-    
-    <a title="valine" href="/character-encoding/#valine-comments" itemprop="discussionUrl">
-      <span class="post-comments-count valine-comment-count" data-xid="/character-encoding/" itemprop="commentCount"></span>
-    </a>
-  </span>
-  
-  
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="几个概念"><a href="#几个概念" class="headerlink" title="几个概念"></a>几个概念</h2><h3 id="存储"><a href="#存储" class="headerlink" title="存储"></a>存储</h3><p>进制（二进制、八进制、十进制、十六进制）、位（bit）、字节（byte）、字符</p>
-<h4 id="进制回顾"><a href="#进制回顾" class="headerlink" title="进制回顾"></a>进制回顾</h4><p>计算机是用二进制存储的，即 1 和 0，表示一位。<br>进制的转换：八进制（取 3 位二进制计算数值），十六进制（取 4 位二进制计算数值），十进制。<br>负数怎么表示？原码、反码（正数反码 = 原码，负数反码 = 正数逐位取反 &amp; 符号位为1）、<strong>补码（反码 + 1）</strong>。</p>
-<blockquote>
-<p>CPU电路中只有加法器，减法是通过补码实现的。</p>
-</blockquote>
-<p>补码为什么是反码 + 1？<br><strong>反码 + 1 只是补码的一种计算方式，真正的理论基础是 模 和 同余数。</strong><br>拿时钟来说，一圈 12 小时，超过 12 就重新计算，所以 12 称为<strong>模</strong>。<br>时钟运算中，减去一个数，其实就相当于加上另外一个数（这个数与减数相加正好等于 12，也称为<strong>同余数</strong>）。<br>eg. 当前为 10 点，回到 6 点，我们需要减去 4，但实际加上 8 也能让时针指向 6 点。</p>
-<h4 id="字节"><a href="#字节" class="headerlink" title="字节"></a>字节</h4><p>计量单位，1byte = 8bit（即，1b = 8B），1KB = 1024bytes，MB / GB / TB / PB /…。</p>
-<h4 id="字符"><a href="#字符" class="headerlink" title="字符"></a>字符</h4><p>即各种符号，包括字母、数字、运算符号、标点符号和其他符号，以及一些功能性符号。</p>
-<h3 id="编码"><a href="#编码" class="headerlink" title="编码"></a>编码</h3><ul>
-<li>字符集 - 可以理解为字典，即，为每一个「字符」分配一个唯一的码位（也称码点 / Code Point），eg. Unicode。</li>
-<li>编码规则 - 将「码位」转换为字节序列的规则（编码 / 解码 可以理解为 加密 / 解密 的过程），eg. UTF-8。</li>
-</ul>
-<h2 id="常见的字符编码"><a href="#常见的字符编码" class="headerlink" title="常见的字符编码"></a>常见的字符编码</h2><h3 id="ASCII"><a href="#ASCII" class="headerlink" title="ASCII"></a>ASCII</h3><p>全称  American Standard Code for Information Interchange，美国信息交换标准代码…<a href="https://www.asciim.cn/" target="_blank" rel="noopener">&gt;&gt;</a>。<br>用一个字节（8位）存储，最高位为 0（保留），剩余7位二进制可表示 128 个字符，涵盖了所有的大小写字母、数字（0…9）、标点符号，以及在美式英语中使用的特殊控制字符。<br>扩展ASCII码：启用原先保留的最高二进制位，用于确定附加的 128 个特殊符号字符、外来语字母和图形符号。</p>
-<h3 id="Unicode"><a href="#Unicode" class="headerlink" title="Unicode"></a>Unicode</h3><p>又称 万国码，是 多语言软件制造商组成的统一码联盟（一个国际组织）定义的编码…<a href="https://home.unicode.org/" target="_blank" rel="noopener">&gt;&gt;</a>。<br>广义的 Unicode 是一个标准，定义了一个字符集以及一系列的编码规则，即，Unicode 字符集和 UTF-8 / UTF-16 / UTF-32 等等编码规则。</p>
-<blockquote>
-<p>UTF 表示 Unicode Transformation Format，即，Unicode 转码格式。</p>
-</blockquote>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/character-encoding/#more" rel="contents">
                 阅读全文 &raquo;
               </a>
             </div>
