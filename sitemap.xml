@@ -123,7 +123,14 @@
   </url>
   
   <url>
-    <loc>https://meegle.github.io/tags/%E4%BA%8B%E5%8A%A1/</loc>
+    <loc>https://meegle.github.io/tags/%E6%B5%AE%E7%82%B9%E6%95%B0/</loc>
+    <lastmod>2021-02-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://meegle.github.io/tags/IEEE754/</loc>
     <lastmod>2021-02-08</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
@@ -165,14 +172,7 @@
   </url>
   
   <url>
-    <loc>https://meegle.github.io/tags/%E6%B5%AE%E7%82%B9%E6%95%B0/</loc>
-    <lastmod>2021-02-08</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.6</priority>
-  </url>
-  
-  <url>
-    <loc>https://meegle.github.io/tags/IEEE754/</loc>
+    <loc>https://meegle.github.io/tags/%E4%BA%8B%E5%8A%A1/</loc>
     <lastmod>2021-02-08</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
@@ -194,13 +194,6 @@
   
   <url>
     <loc>https://meegle.github.io/tags/%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5/</loc>
-    <lastmod>2021-02-08</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.6</priority>
-  </url>
-  
-  <url>
-    <loc>https://meegle.github.io/tags/MySQL/</loc>
     <lastmod>2021-02-08</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
@@ -229,6 +222,13 @@
   
   <url>
     <loc>https://meegle.github.io/tags/%E6%9E%B6%E6%9E%84%E5%B8%88/</loc>
+    <lastmod>2021-02-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://meegle.github.io/tags/MySQL/</loc>
     <lastmod>2021-02-08</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
