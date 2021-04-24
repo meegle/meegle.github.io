@@ -1,16 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
+    <loc>https://meegle.github.io/value-passing-vs-reference-passing/</loc>
+    <lastmod>2021-04-24</lastmod>
+  </url>
+  <url>
+    <loc>https://meegle.github.io/js-oop-and-functional-programming/</loc>
+    <lastmod>2021-04-13</lastmod>
+  </url>
+  <url>
     <loc>https://meegle.github.io/object-and-copy-in-python/</loc>
-    <lastmod>2021-02-07</lastmod>
+    <lastmod>2021-04-13</lastmod>
   </url>
   <url>
     <loc>https://meegle.github.io/distributed-lock/</loc>
     <lastmod>2020-10-30</lastmod>
-  </url>
-  <url>
-    <loc>https://meegle.github.io/js-oop-and-functional-programming/</loc>
-    <lastmod>2020-10-26</lastmod>
   </url>
   <url>
     <loc>https://meegle.github.io/software-architecture/</loc>

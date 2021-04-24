@@ -180,20 +180,20 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">10</span>
+          <span class="site-state-item-count">11</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-categories">
             <a href="/categories/">
           
-        <span class="site-state-item-count">7</span>
+        <span class="site-state-item-count">6</span>
         <span class="site-state-item-name">分类</span></a>
       </div>
       <div class="site-state-item site-state-tags">
             <a href="/tags/">
           
-        <span class="site-state-item-count">19</span>
+        <span class="site-state-item-count">25</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -230,6 +230,99 @@
 
         <div class="content index posts-expand">
           
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://meegle.github.io/floating-point/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Meegle">
+      <meta itemprop="description" content="Just do it!">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="MeeGle's Notes">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/floating-point/" class="post-title-link" itemprop="url">从一个浮点数运算说起</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2020-09-01 21:20:55 / 修改时间：23:40:46" itemprop="dateCreated datePublished" datetime="2020-09-01T21:20:55+08:00">2020-09-01</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/" itemprop="url" rel="index"><span itemprop="name">基础知识</span></a>
+                </span>
+            </span>
+
+          
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/floating-point/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/floating-point/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <h2 id="一个常见问题"><a href="#一个常见问题" class="headerlink" title="一个常见问题"></a>一个常见问题</h2><figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$f1 = <span class="number">0.58</span>;</span><br><span class="line">$f2 = <span class="number">0.50</span>;</span><br><span class="line"><span class="keyword">echo</span> (int)(($f1 - $f2) * <span class="number">100</span>);</span><br></pre></td></tr></table></figure>
+<p>结果为什么是 7 而不是 8，PHP出BUG了？我们换 Java 和 Go 试试。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">float</span> f1 = <span class="number">0.58f</span>;</span><br><span class="line"><span class="keyword">float</span> f2 = <span class="number">0.50f</span>;</span><br><span class="line">System.out.println((<span class="keyword">int</span>)((f1 - f2) * <span class="number">100</span>));</span><br></pre></td></tr></table></figure>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> f1 <span class="keyword">float32</span> = <span class="number">0.58</span></span><br><span class="line"><span class="keyword">var</span> f2 <span class="keyword">float32</span> = <span class="number">0.50</span></span><br><span class="line">fmt.Println((<span class="keyword">int</span>)((f1 - f2) * <span class="number">100</span>))</span><br></pre></td></tr></table></figure>
+<p>结果也都是7。<br>看来这是个“通病”。要弄清楚原因，我们得先回顾下以前学的基础知识。<br><img src="/images/calculation.png" alt="alt"></p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/floating-point/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
       
   
   
@@ -651,114 +744,10 @@
   
   
 
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="https://meegle.github.io/distributed-transaction-solution/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.jpg">
-      <meta itemprop="name" content="Meegle">
-      <meta itemprop="description" content="Just do it!">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="MeeGle's Notes">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/distributed-transaction-solution/" class="post-title-link" itemprop="url">分布式事务解决方案</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2020-07-07 22:20:39" itemprop="dateCreated datePublished" datetime="2020-07-07T22:20:39+08:00">2020-07-07</time>
-            </span>
-              <span class="post-meta-item">
-                <span class="post-meta-item-icon">
-                  <i class="far fa-calendar-check"></i>
-                </span>
-                <span class="post-meta-item-text">更新于</span>
-                <time title="修改时间：2020-07-08 22:14:04" itemprop="dateModified" datetime="2020-07-08T22:14:04+08:00">2020-07-08</time>
-              </span>
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-folder"></i>
-              </span>
-              <span class="post-meta-item-text">分类于</span>
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/%E6%9E%B6%E6%9E%84/" itemprop="url" rel="index"><span itemprop="name">架构</span></a>
-                </span>
-            </span>
-
-          
-  
-  <span class="post-meta-item">
-    
-      <span class="post-meta-item-icon">
-        <i class="far fa-comment"></i>
-      </span>
-      <span class="post-meta-item-text">Valine：</span>
-    
-    <a title="valine" href="/distributed-transaction-solution/#valine-comments" itemprop="discussionUrl">
-      <span class="post-comments-count valine-comment-count" data-xid="/distributed-transaction-solution/" itemprop="commentCount"></span>
-    </a>
-  </span>
-  
-  
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <h2 id="为什么需要分布式事务"><a href="#为什么需要分布式事务" class="headerlink" title="为什么需要分布式事务"></a>为什么需要分布式事务</h2><p>相对于 <strong>本地事务</strong>（单个数据源上进行数据访问和更新） 而言，分布式事务是跨越多个数据源进行数据的访问和更新，即，事务的发起者、参与者、数据资源服务器以及事务管理器分别位于分布式系统的不同节点上。<br>分布式事务的目的是保障分布式环境下的数据一致性。</p>
-<h3 id="CAP"><a href="#CAP" class="headerlink" title="CAP"></a>CAP</h3><p>说到一致性，我们都知道，分布式系统有一个著名的CAP定理，即：一致性、可用性和分区容忍性无法同时满足，最多只能实现两点。</p>
-<h4 id="Consistency"><a href="#Consistency" class="headerlink" title="Consistency"></a>Consistency</h4><p>一致性 - 所有节点在同一时间的数据完全一致。<br>按照CAP定理的取舍，有三类一致性模型：</p>
-<ul>
-<li>强一致性<br>更新完成后，任意时刻读取到的所有节点中的数据都是一致的。一般采用加锁同步的方式实现，对性能影响较大，会牺牲可用性。</li>
-<li>弱一致性<br>更新完成后，系统不承诺可以立即读到最新写入的值，也不承诺具体多久之后可以读到。</li>
-<li>最终一致性<br>弱一致性的一种形式，更新完成后，系统不承诺可以立即返回最新写入的值，但是保证最终会返回上一次更新操作的值。<br><strong>注：CAP的C特指强一致性，弱一致性和最终一致性是为了弥补AP之下的数据一致性。</strong></li>
-</ul>
-<h4 id="Availability"><a href="#Availability" class="headerlink" title="Availability"></a>Availability</h4><p>可用性 - 即，服务可用，能正常的接收请求并及时给予响应，不出现操作失败或访问超时等影响体验的情况。<br><strong>注：这里的可用性不是通常所说的高可用，而是指服务器虽然在线，但却不能对外提供写入服务。</strong></p>
-<h4 id="Partition-Tolerance"><a href="#Partition-Tolerance" class="headerlink" title="Partition Tolerance"></a>Partition Tolerance</h4><p>分区容忍性 - 在遇到部分节点或网络分区故障时，仍能对外提供满足一致性或可用性的服务。<br>网络分区是指独立的机器无法在期望的时间内完成数据交换，这不仅仅指网络断开，还可能有其他情况产生网络分区，比如宕机、网络延时等。</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/distributed-transaction-solution/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
 
   
   <nav class="pagination">
-    <a class="extend prev" rel="prev" href="/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="page-number current">2</span>
+    <a class="extend prev" rel="prev" href="/"><i class="fa fa-angle-left" aria-label="上一页"></i></a><a class="page-number" href="/">1</a><span class="page-number current">2</span><a class="page-number" href="/page/3/">3</a><a class="extend next" rel="next" href="/page/3/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
   </nav>
 
 

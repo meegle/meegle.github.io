@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.ico">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"meegle.github.io","root":"/","scheme":"Gemini","version":"8.0.0-rc.4","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="基础概念通过一段C++示例代码来理清几个概念。 123456789101112131415161718192021#include &lt;iostream&gt;using namespace std;int main () &amp;#123;   int num &#x3D; 20;  &#x2F;&#x2F; 实际变量的声明   int *p;        &#x2F;&#x2F; 指针变量的声明   p &#x3D; &amp;num;      &#x2F;&#x2F;">
+<meta property="og:type" content="article">
+<meta property="og:title" content="值传递与引用传递">
+<meta property="og:url" content="https://meegle.github.io/value-passing-vs-reference-passing/index.html">
+<meta property="og:site_name" content="MeeGle&#39;s Notes">
+<meta property="og:description" content="基础概念通过一段C++示例代码来理清几个概念。 123456789101112131415161718192021#include &lt;iostream&gt;using namespace std;int main () &amp;#123;   int num &#x3D; 20;  &#x2F;&#x2F; 实际变量的声明   int *p;        &#x2F;&#x2F; 指针变量的声明   p &#x3D; &amp;num;      &#x2F;&#x2F;">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://meegle.github.io/images/pointer.png">
+<meta property="og:image" content="https://meegle.github.io/images/php_var.png">
+<meta property="og:image" content="https://meegle.github.io/images/php_passing.png">
+<meta property="article:published_time" content="2021-04-24T12:08:11.000Z">
+<meta property="article:modified_time" content="2021-04-24T12:30:50.416Z">
+<meta property="article:author" content="Meegle">
+<meta property="article:tag" content="指针">
+<meta property="article:tag" content="引用">
+<meta property="article:tag" content="Zval">
+<meta property="article:tag" content="SymbolTable">
+<meta property="article:tag" content="COW机制">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://meegle.github.io/images/pointer.png">
+
+<link rel="canonical" href="https://meegle.github.io/value-passing-vs-reference-passing/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>值传递与引用传递 | MeeGle's Notes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <main class="main">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+        <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+        <span class="toggle-line toggle-line-first"></span>
+        <span class="toggle-line toggle-line-middle"></span>
+        <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">MeeGle's Notes</h1>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <section class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#基础概念"><span class="nav-number">1.</span> <span class="nav-text">基础概念</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#值-地址"><span class="nav-number">1.1.</span> <span class="nav-text">值 &#x2F; 地址</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#变量名与符号表"><span class="nav-number">1.2.</span> <span class="nav-text">变量名与符号表</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#指针-指针变量-变量指针"><span class="nav-number">1.3.</span> <span class="nav-text">指针 &#x2F; 指针变量 &#x2F; 变量指针</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#引用-指针"><span class="nav-number">1.4.</span> <span class="nav-text">引用 &#x2F; 指针</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#PHP中的值传递与引用传递"><span class="nav-number">2.</span> <span class="nav-text">PHP中的值传递与引用传递</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Zval-和-符号表"><span class="nav-number">2.1.</span> <span class="nav-text">Zval 和 符号表</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Copy-On-Write"><span class="nav-number">2.2.</span> <span class="nav-text">Copy On Write</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#引用-和-分离"><span class="nav-number">2.3.</span> <span class="nav-text">引用 和 分离</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#变量作用域"><span class="nav-number">2.4.</span> <span class="nav-text">变量作用域</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#值传递-引用传递"><span class="nav-number">2.5.</span> <span class="nav-text">值传递 &#x2F; 引用传递</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#特殊情况：对象的值传递"><span class="nav-number">2.6.</span> <span class="nav-text">特殊情况：对象的值传递</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Python中的值传递"><span class="nav-number">3.</span> <span class="nav-text">Python中的值传递</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Java中的值传递"><span class="nav-number">4.</span> <span class="nav-text">Java中的值传递</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Go中的值传递和引用传递"><span class="nav-number">5.</span> <span class="nav-text">Go中的值传递和引用传递</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#小结"><span class="nav-number">6.</span> <span class="nav-text">小结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#几个问题"><span class="nav-number">7.</span> <span class="nav-text">几个问题</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#如何理解空指针解引用"><span class="nav-number">7.1.</span> <span class="nav-text">如何理解空指针解引用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#C-的变量-vs-Python-的变量"><span class="nav-number">7.2.</span> <span class="nav-text">C++ 的变量 vs Python 的变量</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考资料"><span class="nav-number">8.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </section>
+      <!--/noindex-->
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Meegle"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">Meegle</p>
+  <div class="site-description" itemprop="description">Just do it!</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">11</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </section>
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </header>
+
+      
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+  <a href="https://github.com/meegle" class="github-corner" title="Follow me on GitHub" aria-label="Follow me on GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a>
+
+<noscript>
+  <div id="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+      <div class="main-inner">
+        
+
+        <div class="content post posts-expand">
+          
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://meegle.github.io/value-passing-vs-reference-passing/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Meegle">
+      <meta itemprop="description" content="Just do it!">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="MeeGle's Notes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          值传递与引用传递
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-04-24 20:08:11 / 修改时间：20:30:50" itemprop="dateCreated datePublished" datetime="2021-04-24T20:08:11+08:00">2021-04-24</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%BC%96%E7%A8%8B%E8%AF%AD%E8%A8%80/" itemprop="url" rel="index"><span itemprop="name">编程语言</span></a>
+                </span>
+            </span>
+
+          
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/value-passing-vs-reference-passing/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/value-passing-vs-reference-passing/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="基础概念"><a href="#基础概念" class="headerlink" title="基础概念"></a>基础概念</h2><p>通过一段C++示例代码来理清几个概念。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> <span class="built_in">std</span>;</span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span> <span class="params">()</span> </span>&#123;</span><br><span class="line">   <span class="keyword">int</span> num = <span class="number">20</span>;  <span class="comment">// 实际变量的声明</span></span><br><span class="line">   <span class="keyword">int</span> *p;        <span class="comment">// 指针变量的声明</span></span><br><span class="line">   p = &amp;num;      <span class="comment">// 在指针变量中存储 num 的地址，即，指针的值为 num 的地址</span></span><br><span class="line"></span><br><span class="line">   <span class="comment">// 输出实际变量的值</span></span><br><span class="line">   <span class="built_in">cout</span> &lt;&lt; <span class="string">"Value of `num` variable: "</span>;</span><br><span class="line">   <span class="built_in">cout</span> &lt;&lt; num &lt;&lt; <span class="built_in">endl</span>;</span><br><span class="line"></span><br><span class="line">   <span class="comment">// 输出在指针变量中存储的地址</span></span><br><span class="line">   <span class="built_in">cout</span> &lt;&lt; <span class="string">"Address stored in `p` variable: "</span>;</span><br><span class="line">   <span class="built_in">cout</span> &lt;&lt; p &lt;&lt; <span class="built_in">endl</span>;</span><br><span class="line"></span><br><span class="line">   <span class="comment">// 访问指针中地址的值</span></span><br><span class="line">   <span class="built_in">cout</span> &lt;&lt; <span class="string">"Value of `*p` variable: "</span>;</span><br><span class="line">   <span class="built_in">cout</span> &lt;&lt; *p &lt;&lt; <span class="built_in">endl</span>;</span><br><span class="line"></span><br><span class="line">   <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>运行结果：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Value of &#96;num&#96; variable: 20</span><br><span class="line">Address stored in &#96;p&#96; variable: 0x7ffe4705e3ac</span><br><span class="line">Value of &#96;*p&#96; variable: 20</span><br></pre></td></tr></table></figure>
+<p><img src="/images/pointer.png" alt="alt"></p>
+<a id="more"></a>
+<h3 id="值-地址"><a href="#值-地址" class="headerlink" title="值 / 地址"></a>值 / 地址</h3><p>值 - 保存在内存（Heap 或 Stack）中的数据，eg. <code>20</code>。<br>地址 - 指的是内存地址，通过内存地址可以访问到内存中对应的数据，eg. <code>0xff1</code> 和 <code>0xff2</code>。</p>
+<h3 id="变量名与符号表"><a href="#变量名与符号表" class="headerlink" title="变量名与符号表"></a>变量名与符号表</h3><p>变量名是一种标识符，在编译或解释过程中结合符号表转换成对应数据的内存地址。<br><strong>符号表（Symbol Table）</strong>是一种用于语言翻译器（eg. 编译器、解释器）中的数据结构。<br>在符号表中，程序源代码中的每个标识符都和它的声明或使用信息绑定在一起，比如其数据类型、作用域以及内存地址。<br>符号表一般通过哈希表（或线性表）来实现，变量名为哈希表的键，内存地址为哈希表的值。<br>比如，C语言中，所有变量通过编译器的符号表都被替换成了内存地址。<br>PHP中，所有变量在解析执行的过程中，通过符号表获取指向的 <code>zval</code> 的内存地址。</p>
+<h3 id="指针-指针变量-变量指针"><a href="#指针-指针变量-变量指针" class="headerlink" title="指针 / 指针变量 / 变量指针"></a>指针 / 指针变量 / 变量指针</h3><p>指针 和 指针变量是两个不同概念。<br>通常，我们表述时会把 指针变量 简称为 指针；但严格来讲，<strong>指针 只是概念，指针变量 是具体实现</strong>；<br>即，指针 也是一个变量，对于指针的定义，与普通变量一样；不同于普通变量，指针变量 是存放内存地址的变量。<br>变量指针 指的是 变量的指针，即，指向该变量的指针；此时指针的值为该变量的地址。<br>比如上例中，<code>*p</code> 就是指针变量，<code>p</code> 就是 <code>num</code> 变量的指针；<code>&amp;</code> 为地址操作符，<code>*</code> 为解引用操作符。</p>
+<h3 id="引用-指针"><a href="#引用-指针" class="headerlink" title="引用 / 指针"></a>引用 / 指针</h3><p>引用是C++引入的重要机制，可以理解为<strong>变量的别名</strong>。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> num = <span class="number">20</span>;</span><br><span class="line"><span class="built_in">cout</span> &lt;&lt; <span class="string">"Value of `num` variable: "</span>;</span><br><span class="line"><span class="built_in">cout</span> &lt;&lt; num &lt;&lt; <span class="built_in">endl</span>;</span><br><span class="line"><span class="built_in">cout</span> &lt;&lt; <span class="string">"Address of `num` variable: "</span>;</span><br><span class="line"><span class="built_in">cout</span> &lt;&lt; &amp;num &lt;&lt; <span class="built_in">endl</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">int</span> &amp;r = num; <span class="comment">// 也可以写成 int&amp; r = num</span></span><br><span class="line"><span class="comment">// 引用变量即表示初始化时指向的对象</span></span><br><span class="line"><span class="built_in">cout</span> &lt;&lt; <span class="string">"Value of `r` variable: "</span>;</span><br><span class="line"><span class="built_in">cout</span> &lt;&lt; r &lt;&lt; <span class="built_in">endl</span>;</span><br><span class="line"><span class="built_in">cout</span> &lt;&lt; <span class="string">"Address of `r` variable: "</span>;</span><br><span class="line"><span class="built_in">cout</span> &lt;&lt; &amp;r &lt;&lt; <span class="built_in">endl</span>;</span><br><span class="line"></span><br><span class="line">r = <span class="number">30</span>;</span><br><span class="line"><span class="built_in">cout</span> &lt;&lt; <span class="string">"Value of `r` variable: "</span>;</span><br><span class="line"><span class="built_in">cout</span> &lt;&lt; r &lt;&lt; <span class="built_in">endl</span>;</span><br><span class="line"><span class="built_in">cout</span> &lt;&lt; <span class="string">"Address of `r` variable: "</span>;</span><br><span class="line"><span class="built_in">cout</span> &lt;&lt; &amp;r &lt;&lt; <span class="built_in">endl</span>;</span><br><span class="line"><span class="built_in">cout</span> &lt;&lt; <span class="string">"Value of `num` variable: "</span>;</span><br><span class="line"><span class="built_in">cout</span> &lt;&lt; num &lt;&lt; <span class="built_in">endl</span>;</span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">运行结果：</span></span><br><span class="line"><span class="comment">Value of `num` variable: 20</span></span><br><span class="line"><span class="comment">Address of `num` variable: 0x7ffed2dabb94</span></span><br><span class="line"><span class="comment">Value of `r` variable: 20</span></span><br><span class="line"><span class="comment">Address of `r` variable: 0x7ffed2dabb94</span></span><br><span class="line"><span class="comment">Value of `r` variable: 30</span></span><br><span class="line"><span class="comment">Address of `r` variable: 0x7ffed2dabb94</span></span><br><span class="line"><span class="comment">Value of `num` variable: 30</span></span><br><span class="line"><span class="comment">*/</span></span><br></pre></td></tr></table></figure>
+<p>其中，<code>&amp;r</code> 是引用变量，<strong>引用本身也是一个变量，它存放的是被引用对象的地址</strong>；<br>这里的 <code>&amp;</code> 不是地址操作符，只是一个标识，用来表示 <code>r</code> 是变量 <code>num</code> 的引用，即 num 的别名；<br>num 和 r 都可以表示数值为20的内存块，对 r 赋值，就是修改 num 和 r 指向的内存块。<br><strong>引用变量实际上是按照指针常量（即，指针本身是常量，不能改变）的方式实现的</strong>。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> num = <span class="number">10</span>;</span><br><span class="line"><span class="keyword">const</span> <span class="keyword">int</span> *p = &amp;num;</span><br></pre></td></tr></table></figure>
+<p>语言层面上，主要有如下区别：</p>
+<ul>
+<li>引用必须在声明时初始化，而指针可以在声明之后再初始化。</li>
+<li>引用必须指向合法的内存块，即，不存在空引用。</li>
+<li>引用初始化后无法被指向另一个对象，而指针可以在任何时候指向另一个对象。</li>
+</ul>
+<p>下面分别来探究下几个热门语言的实现。</p>
+<h2 id="PHP中的值传递与引用传递"><a href="#PHP中的值传递与引用传递" class="headerlink" title="PHP中的值传递与引用传递"></a>PHP中的值传递与引用传递</h2><p>要弄清PHP的值传递与引用传递，还得从变量存储、赋值、引用等方面的底层实现入手。</p>
+<h3 id="Zval-和-符号表"><a href="#Zval-和-符号表" class="headerlink" title="Zval 和 符号表"></a>Zval 和 符号表</h3><p>PHP的底层是C语言，变量是基于C的结构体来实现的：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// https://github.com/php/php-src/blob/php-5.6.40/Zend/zend.h#L334</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> _<span class="title">zval_struct</span> &#123;</span></span><br><span class="line">    <span class="comment">/* Variable information */</span></span><br><span class="line">    zvalue_value value;        <span class="comment">/* value */</span></span><br><span class="line">    zend_uint refcount__gc;</span><br><span class="line">    zend_uchar type;    <span class="comment">/* active type */</span></span><br><span class="line">    zend_uchar is_ref__gc;</span><br><span class="line">&#125;;</span><br><span class="line"><span class="comment">// https://github.com/php/php-src/blob/PHP-5.6.40/Zend/zend_types.h#L55</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> _<span class="title">zval_struct</span> <span class="title">zval</span>;</span></span><br></pre></td></tr></table></figure>
+<p>Zval 结构体中，<code>refcount__gc</code> 是一个计数器，用以记录指向该 zval 的变量（也称符号，即 Symbol）个数；<br>初始化变量时，refcount 为 1，变量间赋值会令 zval 的 refcount 加 1；<br>unset 变量时除了删除符号表记录，变量指向的 zval 的 recount 也会减 1。<br><code>is_ref__gc</code> 用于标识这个变量是否属于引用集合（reference set），以便区分普通变量和引用变量；<br>不同于C++，<strong>PHP的引用本质上是符号表别名</strong>。</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">$a = [<span class="string">'aaa'</span>];</span><br><span class="line">$b = $a;</span><br><span class="line">$c = &amp;$a;</span><br><span class="line">array_push($a, <span class="string">'bbb'</span>);</span><br><span class="line">xdebug_debug_zval(<span class="string">'a'</span>);</span><br><span class="line">xdebug_debug_zval(<span class="string">'b'</span>);</span><br><span class="line">xdebug_debug_zval(<span class="string">'c'</span>);</span><br></pre></td></tr></table></figure>
+<p>运行结果（浏览器访问）：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">a:</span><br><span class="line">(refcount&#x3D;2, is_ref&#x3D;1),</span><br><span class="line">array (size&#x3D;2)</span><br><span class="line">  0 &#x3D;&gt; (refcount&#x3D;2, is_ref&#x3D;0),string &#39;aaa&#39; (length&#x3D;3)</span><br><span class="line">  1 &#x3D;&gt; (refcount&#x3D;1, is_ref&#x3D;0),string &#39;bbb&#39; (length&#x3D;3)</span><br><span class="line">b:</span><br><span class="line">(refcount&#x3D;1, is_ref&#x3D;0),</span><br><span class="line">array (size&#x3D;1)</span><br><span class="line">  0 &#x3D;&gt; (refcount&#x3D;2, is_ref&#x3D;0),string &#39;aaa&#39; (length&#x3D;3)</span><br><span class="line">c:</span><br><span class="line">(refcount&#x3D;2, is_ref&#x3D;1),</span><br><span class="line">array (size&#x3D;2)</span><br><span class="line">  0 &#x3D;&gt; (refcount&#x3D;2, is_ref&#x3D;0),string &#39;aaa&#39; (length&#x3D;3)</span><br><span class="line">  1 &#x3D;&gt; (refcount&#x3D;1, is_ref&#x3D;0),string &#39;bbb&#39; (length&#x3D;3)</span><br></pre></td></tr></table></figure>
+<p>注：<code>xdebug_debug_zval</code> 是 Xdebug 扩展提供的用于打印 zval 的函数。<br><img src="/images/php_var.png" alt="alt"></p>
+<ul>
+<li>在当前作用域的符号表中插入新的符号 <code>a</code>，由于该变量是一个普通变量，因此会生成一个 <code>refcount=1</code> 且 <code>is_ref=0</code> 的 zval 容器。</li>
+<li>变量 a 赋值给变量 b，zval 的 refcount 加 1，即，<code>refcount=2</code>。</li>
+<li>变量 a <a href="https://www.php.net/manual/zh/language.references.whatdo.php#language.references.whatdo.assign" target="_blank" rel="noopener">引用赋值</a>给变量 c，则 c 也指向 zval。<br>a、c 指向的 zval 的 <code>is_ref=1</code>，此时 a、c 称为引用变量。<br>同时，原本与 a 共享 zval 的 b 指向了新的 zval。为什么？</li>
+</ul>
+<h3 id="Copy-On-Write"><a href="#Copy-On-Write" class="headerlink" title="Copy On Write"></a>Copy On Write</h3><p>为了减少内存占用，PHP变量赋值被设计为变量指向同一个 zval（<strong>共享</strong>），但既然是同一个 zval，为什么修改变量不会影响到其他变量呢？<br>PHP 的 <strong>Copy On Write （简称 COW，写时复制）机制</strong>：</p>
+<ul>
+<li>在修改一个变量之前，会先检查这个变量对应 zval 的 refcount，如果大于 1，则复制出一个新的 <code>zval (is_ref=0, refcount=1)</code>；</li>
+<li>原 zval 的 refcount 减 1，并修改符号表，使修改的变量指向新的 zval（<strong>分离</strong>）。</li>
+<li>对于引用赋值的情况，通过判断 zval 的 is_ref 是否为 1 来决定是否分离。</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// https://github.com/php/php-src/blob/php-5.6.40/Zend/zend.h#L791</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> SEPARATE_ZVAL_IF_NOT_REF(ppzv)      \</span></span><br><span class="line">    <span class="keyword">if</span> (!PZVAL_IS_REF(*ppzv)) &#123;             \</span><br><span class="line">        SEPARATE_ZVAL(ppzv);                \</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="引用-和-分离"><a href="#引用-和-分离" class="headerlink" title="引用 和 分离"></a>引用 和 分离</h3><p>当执行 <code>$c = &amp;$a</code> 时：<br>PHP发现要操作的 zval 的 refcount 大于 1，则，将 <code>$b</code> 分离出去（复制出一个新的 <code>zval (is_ref=0, refcount=1)</code>，原 zval 的 refcount 减 1）；<br>同时，<code>$c</code> 指向原 zval，原 zval 的 refcount 加 1，即，<code>refcount=2</code>。</p>
+<h3 id="变量作用域"><a href="#变量作用域" class="headerlink" title="变量作用域"></a>变量作用域</h3><p>PHP通过不同的符号表实现变量的作用域，除了全局符号表，每个函数、类、命名空间等都有自己独立的符号表。<br>当创建一个变量时，PHP会为这个变量分配一个 zval，填入相应的变量值，然后将这个变量的名字和指向这个 zval 的指针填入一个符号表中。<br>当获取这个变量时，PHP会通过查找这个符号表，获得对应的 zval。<br>PHP符号表分全局符号表和活动符号表，定义在 <code>_zend_executor_globals</code> 结构体（这个结构体用于在执行器中保存一些执行相关的上下文信息）里：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// https://github.com/php/php-src/blob/php-5.6.40/Zend/zend_globals.h#L168</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> _<span class="title">zend_executor_globals</span> &#123;</span></span><br><span class="line">    ...</span><br><span class="line">    HashTable *active_symbol_table;</span><br><span class="line">    HashTable symbol_table;     <span class="comment">/* main symbol table */</span></span><br><span class="line">    ...</span><br></pre></td></tr></table></figure>
+<p>其中，全局符号表，保存了在顶层作用域（即不在任何函数 / 对象内）的变量。<br>每当调用一个函数（或对象的方法）时，就会为这个函数创建一个活动符号表，所有在这个函数内定义的变量，都会保存在这个活动符号表里。</p>
+<h3 id="值传递-引用传递"><a href="#值传递-引用传递" class="headerlink" title="值传递 / 引用传递"></a>值传递 / 引用传递</h3><p>举个例子：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">$a = <span class="string">'aaa'</span>;</span><br><span class="line">$b = <span class="string">'bbb'</span>;</span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">test</span><span class="params">($x, &amp;$y)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">echo</span> <span class="string">'x：'</span>.$x.PHP_EOL;</span><br><span class="line">    $x = <span class="string">'xxx'</span>;</span><br><span class="line">    <span class="keyword">echo</span> <span class="string">'x：'</span>.$x.PHP_EOL;</span><br><span class="line">    <span class="keyword">echo</span> <span class="string">'y：'</span>.$y.PHP_EOL;</span><br><span class="line">    $y = <span class="string">'yyy'</span>;</span><br><span class="line">&#125;</span><br><span class="line">test($a, $b);</span><br><span class="line"><span class="keyword">echo</span> <span class="string">'a：'</span>.$a.PHP_EOL;</span><br><span class="line"><span class="keyword">echo</span> <span class="string">'b：'</span>.$b;</span><br></pre></td></tr></table></figure>
+<p>运行结果：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">x：aaa</span><br><span class="line">x：xxx</span><br><span class="line">y：bbb</span><br><span class="line">a：aaa</span><br><span class="line">b：yyy</span><br></pre></td></tr></table></figure>
+<p><img src="/images/php_passing.png" alt="alt"></p>
+<ul>
+<li>参数 <code>$x</code> 和 <code>$y</code> 是保存在函数 test 的活动符号表里，但是对应的 zval 指针是指向传递过来的 zval（即 <code>$a</code> 和 <code>$b</code>）。</li>
+<li><strong>函数传参时，会复制所有传递的参数放入函数堆栈中</strong>，所以指向 zval 的 refcount 会额外加 1。<br>可通过 <code>func_get_args()</code> 获取传递的参数，也可以用 <code>debug_backtrace()</code> 查看。</li>
+<li>函数结束后，销毁函数的活动符号表并清理堆栈，b 对应的 zval 的 is_ref 恢复为 0。</li>
+</ul>
+<h3 id="特殊情况：对象的值传递"><a href="#特殊情况：对象的值传递" class="headerlink" title="特殊情况：对象的值传递"></a>特殊情况：对象的值传递</h3><p>保存对象的结构是 <code>_zend_object</code>，zval 里实际保存的是指向该结构体的指针。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// https://github.com/php/php-src/blob/php-5.6.40/Zend/zend.h#L322</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="keyword">union</span> _zvalue_value &#123;</span><br><span class="line">    <span class="keyword">long</span> lval;                  <span class="comment">/* long value */</span></span><br><span class="line">    <span class="keyword">double</span> dval;                <span class="comment">/* double value */</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">        <span class="keyword">char</span> *val;</span><br><span class="line">        <span class="keyword">int</span> len;</span><br><span class="line">    &#125; str;</span><br><span class="line">    HashTable *ht;              <span class="comment">/* hash table value */</span></span><br><span class="line">    zend_object_value obj;</span><br><span class="line">    zend_ast *ast;</span><br><span class="line">&#125; zvalue_value;</span><br><span class="line"></span><br><span class="line"><span class="comment">// https://github.com/php/php-src/blob/php-5.6.40/Zend/zend_types.h#L57</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> _<span class="title">zend_object_value</span> &#123;</span></span><br><span class="line">    zend_object_handle handle;</span><br><span class="line">    <span class="keyword">const</span> zend_object_handlers *handlers;</span><br><span class="line">&#125; zend_object_value;</span><br></pre></td></tr></table></figure>
+<p>然后通过 zend_object_handle 获取对象，也就是一个int的索引去全局的object buckets里查找。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// https://github.com/php/php-src/blob/php-5.6.40/Zend/zend_objects_API.c#L281</span></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Retrieve an entry from the objects store given the object handle.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function">ZEND_API <span class="keyword">void</span> *<span class="title">zend_object_store_get_object_by_handle</span><span class="params">(zend_object_handle handle TSRMLS_DC)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> EG(objects_store).object_buckets[handle].bucket.obj.object;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>全局的object buckets在对象池初始化内设定：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// https://github.com/php/php-src/blob/php-5.6.40/Zend/zend_objects_API.c#L30</span></span><br><span class="line"><span class="function">ZEND_API <span class="keyword">void</span> <span class="title">zend_objects_store_init</span><span class="params">(zend_objects_store *objects, zend_uint init_size)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    objects-&gt;object_buckets = (zend_object_store_bucket *) emalloc(init_size * <span class="keyword">sizeof</span>(zend_object_store_bucket));</span><br><span class="line">    objects-&gt;top = <span class="number">1</span>; <span class="comment">/* Skip 0 so that handles are true */</span></span><br><span class="line">    objects-&gt;<span class="built_in">size</span> = init_size;</span><br><span class="line">    objects-&gt;free_list_head = <span class="number">-1</span>;</span><br><span class="line">    <span class="built_in">memset</span>(&amp;objects-&gt;object_buckets[<span class="number">0</span>], <span class="number">0</span>, <span class="keyword">sizeof</span>(zend_object_store_bucket));</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// https://github.com/php/php-src/blob/php-5.6.40/Zend/zend_objects_API.h#L31</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> _<span class="title">zend_object_store_bucket</span> &#123;</span></span><br><span class="line">    zend_bool destructor_called;</span><br><span class="line">    zend_bool valid;</span><br><span class="line">    zend_uchar apply_count;</span><br><span class="line">    <span class="keyword">union</span> _store_bucket &#123;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> _<span class="title">store_object</span> &#123;</span></span><br><span class="line">            <span class="keyword">void</span> *object;</span><br><span class="line">            <span class="keyword">zend_objects_store_dtor_t</span> dtor;</span><br><span class="line">            <span class="keyword">zend_objects_free_object_storage_t</span> free_storage;</span><br><span class="line">            <span class="keyword">zend_objects_store_clone_t</span> clone;</span><br><span class="line">            <span class="keyword">const</span> zend_object_handlers *handlers;</span><br><span class="line">            zend_uint refcount;</span><br><span class="line">            gc_root_buffer *buffered;</span><br><span class="line">        &#125; obj;</span><br><span class="line">        <span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">            <span class="keyword">int</span> next;</span><br><span class="line">        &#125; free_list;</span><br><span class="line">    &#125; bucket;</span><br><span class="line">&#125; zend_object_store_bucket;</span><br></pre></td></tr></table></figure>
+<p>可以看到，zend_object_store_bucket.bucket.obj.object 为指向真正对象的指针。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// https://github.com/php/php-src/blob/php-5.6.40/Zend/zend.h#L312</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> _<span class="title">zend_object</span> &#123;</span></span><br><span class="line">    zend_class_entry *ce;</span><br><span class="line">    HashTable *properties;</span><br><span class="line">    zval **properties_table;</span><br><span class="line">    HashTable *guards; <span class="comment">/* protects from __get/__set ... recursion */</span></span><br><span class="line">&#125; zend_object;</span><br></pre></td></tr></table></figure>
+<p>至于为什么是 <code>void *object</code> 不是 <code>zend_object* object</code>，是为了兼容扩展（C写的PHP扩展）中的自定义对象。</p>
+<p>是不是感觉找个对象很不容易，所以PHP7优化了性能，直接把 zend_object 指针放到了 zval 里。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// https://github.com/php/php-src/blob/master/Zend/zend_types.h#L292</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="keyword">union</span> _zend_value &#123;</span><br><span class="line">    ...</span><br><span class="line">    zend_object      *obj;</span><br><span class="line">    ...</span><br><span class="line">&#125; zend_value;</span><br></pre></td></tr></table></figure>
+<p>所以，修改对象的属性会影响所有指向该对象的变量。<br>举个简单例子：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">$obj = <span class="keyword">new</span> stdClass();</span><br><span class="line">$obj-&gt;field = <span class="string">'aaa'</span>;</span><br><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">test</span><span class="params">($param)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">echo</span> <span class="string">'field：'</span>.$param-&gt;field.PHP_EOL;</span><br><span class="line">    $param-&gt;field = <span class="string">'bbb'</span>;</span><br><span class="line">    <span class="keyword">echo</span> <span class="string">'field：'</span>.$param-&gt;field.PHP_EOL;</span><br><span class="line">&#125;</span><br><span class="line">test($obj);</span><br><span class="line"><span class="keyword">echo</span> <span class="string">'field：'</span>.$obj-&gt;field;</span><br></pre></td></tr></table></figure>
+<p>运行结果：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">field：aaa</span><br><span class="line">field：bbb</span><br><span class="line">field：bbb</span><br></pre></td></tr></table></figure>
+
+<h2 id="Python中的值传递"><a href="#Python中的值传递" class="headerlink" title="Python中的值传递"></a>Python中的值传递</h2><p>Python中只有值传递，这个值是变量的值，即对象的内存地址。<br>变量名与对象也是通过<a href="https://docs.python.org/zh-cn/3/library/symtable.html" target="_blank" rel="noopener">符号表</a>来关联。<br>不同于PHP，Python的变量皆指向对象（底层应该也是指针），底层数据（堆内存）不改变，修改变量即指向新的对象，没有引用的概念。<br>可以回顾下之前的内容（<a href="/object-and-copy-in-python/" title="Python中的对象与拷贝">Python中的对象与拷贝</a>）。</p>
+<h2 id="Java中的值传递"><a href="#Java中的值传递" class="headerlink" title="Java中的值传递"></a>Java中的值传递</h2><p>Java中只有值传递，没有引用传递，即指针隐藏在内部实现里了。<br><em>后续补充…</em></p>
+<h2 id="Go中的值传递和引用传递"><a href="#Go中的值传递和引用传递" class="headerlink" title="Go中的值传递和引用传递"></a>Go中的值传递和引用传递</h2><p><em>后续补充…</em></p>
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>「引用」是语言特性，不同语言的「引用」实现原理各不相同。<br>C++的引用本质上是指针常量。<br>PHP的引用本质上是符号表别名。<br>而Python直接不提引用，或者说变量与对象的指向就是引用。<br>不同语言的值传递与引用传递实现，无外乎 符号表、地址及指针 的应用。</p>
+<h2 id="几个问题"><a href="#几个问题" class="headerlink" title="几个问题"></a>几个问题</h2><h3 id="如何理解空指针解引用"><a href="#如何理解空指针解引用" class="headerlink" title="如何理解空指针解引用"></a>如何理解空指针解引用</h3><p>C/C++中，如果一个指针的值是NULL，解引用这个指针时，会导致程序崩溃。<br>注：指针的值是内存地址，值为NULL的指针实际上指向的是0x0这个内存地址，此地址不允许访问，程序直接异常中断。<br>如何避免？在指针解引用之前先判断指针是否为NULL。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> *p;</span><br><span class="line">p = <span class="literal">NULL</span>; <span class="comment">// 等价于 int *p = NULL 或 int* p = NULL</span></span><br><span class="line"><span class="keyword">if</span> (p != <span class="literal">NULL</span>) &#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">"p is not NULL.\n"</span>);</span><br><span class="line">    <span class="built_in">cout</span> &lt;&lt; *p &lt;&lt; <span class="built_in">endl</span>;</span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">"p is NULL.\n"</span>);</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// 运行结果：p is NULL.</span></span><br></pre></td></tr></table></figure>
+<p>注： <code>int *p</code> 与 <code>int* p</code> 都是定义指针变量，写法不同而已。</p>
+<h3 id="C-的变量-vs-Python-的变量"><a href="#C-的变量-vs-Python-的变量" class="headerlink" title="C++ 的变量 vs Python 的变量"></a>C++ 的变量 vs Python 的变量</h3><p>C++ 中，编译器为变量分配一个内存空间，改变变量是直接改变内存块的数据，变量的地址不变；引用是固定的，修改的数据是直接写入引用所指的内存块。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> num1 = <span class="number">20</span>;  <span class="comment">// 实际变量的声明</span></span><br><span class="line"><span class="built_in">cout</span> &lt;&lt; &amp;num1 &lt;&lt; <span class="built_in">endl</span>;</span><br><span class="line">num1 = <span class="number">30</span>;</span><br><span class="line"><span class="built_in">cout</span> &lt;&lt; &amp;num1 &lt;&lt; <span class="built_in">endl</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">int</span> num2 = <span class="number">20</span>;</span><br><span class="line"><span class="keyword">int</span> &amp;r = num2;  <span class="comment">// 引用变量的声明</span></span><br><span class="line"><span class="built_in">cout</span> &lt;&lt; &amp;r &lt;&lt; <span class="built_in">endl</span>;</span><br><span class="line">r = <span class="number">30</span>;<span class="comment">// 等价于 num2 = 30</span></span><br><span class="line"><span class="built_in">cout</span> &lt;&lt; &amp;r &lt;&lt; <span class="built_in">endl</span>;</span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">运行结果：</span></span><br><span class="line"><span class="comment">0x7ffd0cf08a78</span></span><br><span class="line"><span class="comment">0x7ffd0cf08a78</span></span><br><span class="line"><span class="comment">0x7ffd0cf08a7c</span></span><br><span class="line"><span class="comment">0x7ffd0cf08a7c</span></span><br><span class="line"><span class="comment">*/</span></span><br></pre></td></tr></table></figure>
+<p><strong>Python 不改变内存块，变量类似于 C 语言的指针</strong>，指向堆内存；修改变量即指向新的内存块。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">num = <span class="number">20</span></span><br><span class="line">print(id(num))</span><br><span class="line">num = <span class="number">30</span></span><br><span class="line">print(id(num))</span><br><span class="line"><span class="string">"""</span></span><br><span class="line"><span class="string">运行结果：</span></span><br><span class="line"><span class="string">2452180921232</span></span><br><span class="line"><span class="string">2452180921552</span></span><br><span class="line"><span class="string">"""</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><p><a href="https://www.zhihu.com/question/37608201" target="_blank" rel="noopener">C++中，引用和指针的区别是什么</a><br><a href="https://www.php.net/manual/zh/features.gc.refcounting-basics.php" target="_blank" rel="noopener">PHP手册 - 垃圾回收机制 - 引用计数基本知识</a><br><a href="https://www.laruence.com/2010/12/08/1716.html" target="_blank" rel="noopener">如何获取一个变量的名字</a><br><a href="https://www.laruence.com/2008/08/26/463.html" target="_blank" rel="noopener">深入理解PHP原理之变量作用域</a><br><a href="https://www.laruence.com/2008/09/19/520.html" target="_blank" rel="noopener">深入理解PHP原理之变量分离/引用</a><br><a href="https://www.cnblogs.com/ohmygirl/p/internal-variable-1.html" target="_blank" rel="noopener">PHP内核探索之变量（1）Zval</a><br><a href="https://www.cnblogs.com/ohmygirl/p/4128931.html" target="_blank" rel="noopener">PHP内核探索之变量（2）-理解引用</a><br><a href="https://www.laruence.com/2020/03/23/5605.html" target="_blank" rel="noopener">深入理解PHP7内核之OBJECT</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%8C%87%E9%92%88/" rel="tag"># 指针</a>
+              <a href="/tags/%E5%BC%95%E7%94%A8/" rel="tag"># 引用</a>
+              <a href="/tags/Zval/" rel="tag"># Zval</a>
+              <a href="/tags/SymbolTable/" rel="tag"># SymbolTable</a>
+              <a href="/tags/COW%E6%9C%BA%E5%88%B6/" rel="tag"># COW机制</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/object-and-copy-in-python/" rel="prev" title="Python中的对象与拷贝">
+      <i class="fa fa-chevron-left"></i> Python中的对象与拷贝
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+        </div>
+        
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Meegle</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+  
+  <script>
+    (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      bp.src = (curProtocol === 'https') ? 'https://zz.bdstatic.com/linksubmit/push.js' : 'http://push.zhanzhang.baidu.com/push.js';
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+    })();
+  </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/valine@1/dist/Valine.min.js', () => {
+    new Valine(Object.assign({
+      el  : '#valine-comments',
+      path: location.pathname,
+    }, {"enable":true,"appId":"0DFjQujwMejBjMdRN3BXBbV4","appKey":"K5U8WSiJMA4o3T1OR1k1J23J","placeholder":"写下你的评论...","avatar":"mm","meta":["nick","mail","link"],"pageSize":10,"language":"zh-cn","visitor":false,"comment_count":true,"recordIP":false,"serverURLs":null}
+    ));
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>
