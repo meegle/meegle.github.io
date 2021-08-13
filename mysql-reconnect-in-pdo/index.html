@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 4.2.1">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.ico">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"meegle.github.io","root":"/","scheme":"Gemini","version":"8.0.0-rc.4","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"valine","storage":true,"lazyload":false,"nav":null,"activeClass":"valine"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="背景最近工作中有个项目，用 Phalcon 框架开发，涉及 RabbitMQ，所以自己写了个类来处理消息。部署时用 Supervisor 监管，但发现一段时间没有业务触发就会出现 SQLSTATE[HY000]: General error: 2006 MySQL server has gone away 的错误。 分析为什么会出现这个错误？官方给出了解释 https:&#x2F;&#x2F;dev.mysql.co">
+<meta property="og:type" content="article">
+<meta property="og:title" content="PDO中MySQL gone away重连处理">
+<meta property="og:url" content="https://meegle.github.io/mysql-reconnect-in-pdo/index.html">
+<meta property="og:site_name" content="MeeGle&#39;s Notes">
+<meta property="og:description" content="背景最近工作中有个项目，用 Phalcon 框架开发，涉及 RabbitMQ，所以自己写了个类来处理消息。部署时用 Supervisor 监管，但发现一段时间没有业务触发就会出现 SQLSTATE[HY000]: General error: 2006 MySQL server has gone away 的错误。 分析为什么会出现这个错误？官方给出了解释 https:&#x2F;&#x2F;dev.mysql.co">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2021-08-13T02:33:34.000Z">
+<meta property="article:modified_time" content="2021-08-13T02:40:25.270Z">
+<meta property="article:author" content="Meegle">
+<meta property="article:tag" content="PDO">
+<meta property="article:tag" content="gone away">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://meegle.github.io/mysql-reconnect-in-pdo/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>PDO中MySQL gone away重连处理 | MeeGle's Notes</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  body { margin-top: 2rem; }
+
+  .use-motion .header,
+  .use-motion .site-brand-container .toggle,
+  .use-motion .menu-item,
+  .use-motion .sidebar,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header,
+  .use-motion .footer { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle,
+  .use-motion .custom-logo-image {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line {
+    transform: scaleX(1);
+  }
+
+  .search-pop-overlay, .sidebar-nav { display: none; }
+  .sidebar-panel { display: block; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <main class="main">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+        <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+        <span class="toggle-line toggle-line-first"></span>
+        <span class="toggle-line toggle-line-middle"></span>
+        <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <h1 class="site-title">MeeGle's Notes</h1>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <section class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#背景"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分析"><span class="nav-number">2.</span> <span class="nav-text">分析</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#解决"><span class="nav-number">3.</span> <span class="nav-text">解决</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#PDO-ATTR-ERRMODE"><span class="nav-number">3.1.</span> <span class="nav-text">PDO::ATTR_ERRMODE</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#PDO-ATTR-EMULATE-PREPARES-与-prepare"><span class="nav-number">3.2.</span> <span class="nav-text">PDO::ATTR_EMULATE_PREPARES 与 prepare</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#PDO-ATTR-PERSISTENT"><span class="nav-number">3.3.</span> <span class="nav-text">PDO::ATTR_PERSISTENT</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Phalcon-框架下实现重连"><span class="nav-number">4.</span> <span class="nav-text">Phalcon 框架下实现重连</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#关于-PDO-中的-errorInfo"><span class="nav-number">4.1.</span> <span class="nav-text">关于 PDO 中的 errorInfo</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Phalcon-Db-Adapter-Pdo-AbstractPdo-中的-executePrepared"><span class="nav-number">4.2.</span> <span class="nav-text">Phalcon\Db\Adapter\Pdo\AbstractPdo 中的 executePrepared</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#几个问题"><span class="nav-number">5.</span> <span class="nav-text">几个问题</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么-dbh-null-就可以关闭-PDO-建立的-MySQL-连接？"><span class="nav-number">5.1.</span> <span class="nav-text">为什么 $dbh &#x3D; null 就可以关闭 PDO 建立的 MySQL 连接？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考资料"><span class="nav-number">6.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+      </section>
+      <!--/noindex-->
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Meegle"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">Meegle</p>
+  <div class="site-description" itemprop="description">Just do it!</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">12</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">27</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="cc-license motion-element" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="/images/cc-by-nc-sa.svg" alt="Creative Commons"></a>
+  </div>
+
+
+
+      </section>
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </header>
+
+      
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+  <a href="https://github.com/meegle" class="github-corner" title="Follow me on GitHub" aria-label="Follow me on GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></a>
+
+<noscript>
+  <div id="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+      <div class="main-inner">
+        
+
+        <div class="content post posts-expand">
+          
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://meegle.github.io/mysql-reconnect-in-pdo/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="Meegle">
+      <meta itemprop="description" content="Just do it!">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="MeeGle's Notes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          PDO中MySQL gone away重连处理
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2021-08-13 10:33:34 / 修改时间：10:40:25" itemprop="dateCreated datePublished" datetime="2021-08-13T10:33:34+08:00">2021-08-13</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E7%BC%96%E7%A8%8B%E8%AF%AD%E8%A8%80/" itemprop="url" rel="index"><span itemprop="name">编程语言</span></a>
+                </span>
+            </span>
+
+          
+  
+  <span class="post-meta-item">
+    
+      <span class="post-meta-item-icon">
+        <i class="far fa-comment"></i>
+      </span>
+      <span class="post-meta-item-text">Valine：</span>
+    
+    <a title="valine" href="/mysql-reconnect-in-pdo/#valine-comments" itemprop="discussionUrl">
+      <span class="post-comments-count valine-comment-count" data-xid="/mysql-reconnect-in-pdo/" itemprop="commentCount"></span>
+    </a>
+  </span>
+  
+  
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>最近工作中有个项目，用 <a href="http://phalcondoc.p2hp.com/zh/4.0" target="_blank" rel="noopener">Phalcon</a> 框架开发，涉及 RabbitMQ，所以自己写了个类来处理消息。<br>部署时用 Supervisor 监管，但发现一段时间没有业务触发就会出现 <code>SQLSTATE[HY000]: General error: 2006 MySQL server has gone away</code> 的错误。</p>
+<h2 id="分析"><a href="#分析" class="headerlink" title="分析"></a>分析</h2><p>为什么会出现这个错误？官方给出了解释 <a href="https://dev.mysql.com/doc/refman/5.7/en/gone-away.html" target="_blank" rel="noopener">https://dev.mysql.com/doc/refman/5.7/en/gone-away.html</a></p>
+<blockquote>
+<p>The most common reason for the MySQL server has gone away error is that the server timed out and closed the connection.<br>In this case, you normally get one of the following error codes (which one you get is operating system-dependent).</p>
+</blockquote>
+<p>也就是说，出现 gone away，大部分是因为服务超时或断连了，而且错误码不一定是 2006（<a href="https://dev.mysql.com/doc/mysql-errors/5.7/en/client-error-reference.html#error_cr_server_gone_error" target="_blank" rel="noopener">CR_SERVER_GONE_ERROR</a>），也可能是 2013（<a href="https://dev.mysql.com/doc/mysql-errors/5.7/en/client-error-reference.html#error_cr_server_lost" target="_blank" rel="noopener">CR_SERVER_LOST</a>）。<br>常见的原因大致有：</p>
+<ul>
+<li>运行线程被杀掉了。</li>
+<li>关闭连接后又发出了SQL查询。</li>
+<li>运行环境没有授权连接MySQL。</li>
+<li>客户端的TCP/IP连接超时。<br>比如做了这样的设置 <code>mysql_options(..., MYSQL_OPT_READ_TIMEOUT,...)</code> 或 <code>mysql_options(..., MYSQL_OPT_WRITE_TIMEOUT,...)</code>。</li>
+<li><a href="https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_wait_timeout" target="_blank" rel="noopener">wait_timeout</a>，即，服务端主动关闭超时未交互的连接。</li>
+<li>异常查询请求导致服务端主动关闭连接。<br>比如 超出了 <code>max_allowed_packet</code> 变量设定的查询限制。</li>
+</ul>
+<p>所以，大概率是 <code>wait_timeout</code> 导致的。</p>
+<h2 id="解决"><a href="#解决" class="headerlink" title="解决"></a>解决</h2><p>用 <code>show variables like &#39;%timeout%&#39;;</code> 查看 MySQL 的 <code>wait_timeout</code> 和 <code>interactive_timeout</code>。<br>如果 my.ini 中没有配置，则默认 <code>wait_timeout</code> 为 28800，即，8小时。<br>为了测试，修改本地 MySQL 的 my.ini 配置：</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[mysqld]</span></span><br><span class="line">...</span><br><span class="line"><span class="attr">wait_timeout</span>=<span class="number">5</span></span><br><span class="line"><span class="attr">interactive_timeout</span>=<span class="number">5</span></span><br></pre></td></tr></table></figure>
+<p>直接上代码（一段实现异常重连的示例代码）：</p>
+<a id="more"></a>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 创建数据库连接</span></span><br><span class="line">$_connect = <span class="keyword">static</span> <span class="function"><span class="keyword">function</span> <span class="params">()</span> </span>&#123;</span><br><span class="line">    $dsn = <span class="string">'mysql:dbname=test;host=127.0.0.1'</span>;</span><br><span class="line">    $user = <span class="string">'root'</span>;</span><br><span class="line">    $password = <span class="string">'123456'</span>;</span><br><span class="line"></span><br><span class="line">    $dbh = <span class="keyword">null</span>;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        $dbh = <span class="keyword">new</span> \PDO($dsn, $user, $password, [</span><br><span class="line">            \PDO::ATTR_ERRMODE =&gt; \PDO::ERRMODE_EXCEPTION</span><br><span class="line">        ]);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (\PDOException $e) &#123;</span><br><span class="line">        <span class="keyword">echo</span> <span class="string">'Connection failed: '</span> . $e-&gt;getMessage();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> $dbh;</span><br><span class="line">&#125;;</span><br><span class="line">$dbh = $_connect();</span><br><span class="line"></span><br><span class="line"><span class="comment">// 执行SQL</span></span><br><span class="line">$_execute = <span class="keyword">static</span> <span class="function"><span class="keyword">function</span> <span class="params">($dbh, $sql)</span> </span>&#123;</span><br><span class="line">    $sth = $dbh-&gt;prepare($sql);</span><br><span class="line">    $sth-&gt;execute([<span class="string">':id'</span> =&gt; <span class="number">1</span>]);</span><br><span class="line">    $res = $sth-&gt;fetchAll();</span><br><span class="line">    print_r($res);</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">$i = <span class="number">0</span>;</span><br><span class="line"><span class="keyword">do</span> &#123;</span><br><span class="line">    $i ++;</span><br><span class="line">    $sql = <span class="string">'SELECT name FROM user WHERE id = :id'</span>;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        $_execute($dbh, $sql);</span><br><span class="line">    &#125; <span class="keyword">catch</span> (\PDOException $e) &#123;</span><br><span class="line">        <span class="comment">// 关闭连接</span></span><br><span class="line">        $dbh = <span class="keyword">null</span>;</span><br><span class="line">        <span class="keyword">echo</span> <span class="string">'重连了'</span>.PHP_EOL;</span><br><span class="line">        $dbh = $_connect();</span><br><span class="line">        $_execute($dbh, $sql);</span><br><span class="line">    &#125;</span><br><span class="line">    sleep(<span class="number">6</span>);</span><br><span class="line">&#125; <span class="keyword">while</span> ($i &lt; <span class="number">10</span>);</span><br></pre></td></tr></table></figure>
+
+<h3 id="PDO-ATTR-ERRMODE"><a href="#PDO-ATTR-ERRMODE" class="headerlink" title="PDO::ATTR_ERRMODE"></a><code>PDO::ATTR_ERRMODE</code></h3><p>PDO 的错误报告方式有 PDO::ERRMODE_SILENT（静默）、PDO::ERRMODE_WARNING（引发 E_WARNING）、PDO::ERRMODE_EXCEPTION（抛出 Exception 异常）。<br>所以，需设置错误报告方式为 <code>PDO::ERRMODE_EXCEPTION</code>，否则默认抛出 WARNING。</p>
+<h3 id="PDO-ATTR-EMULATE-PREPARES-与-prepare"><a href="#PDO-ATTR-EMULATE-PREPARES-与-prepare" class="headerlink" title="PDO::ATTR_EMULATE_PREPARES 与 prepare"></a><code>PDO::ATTR_EMULATE_PREPARES</code> 与 <code>prepare</code></h3><p>细心的你可能会发现：gone away 异常是在 <code>$sth-&gt;execute</code> 处抛出的，为什么不是 <code>$sth-&gt;prepare</code> 呢？<br>PDO 默认启用预处理语句的模拟，即 <code>PDO::ATTR_EMULATE_PREPARES</code> 为 <code>true</code>。<br><a href="https://www.php.net/manual/zh/pdo.setattribute.php" target="_blank" rel="noopener">https://www.php.net/manual/zh/pdo.setattribute.php</a></p>
+<blockquote>
+<p>PDO::ATTR_EMULATE_PREPARES 启用或禁用预处理语句的模拟。有些驱动不支持或有限度地支持本地预处理。使用此设置强制PDO总是模拟预处理语句（如果为 true），或试着使用本地预处理语句（如果为 false）。如果驱动不能成功预处理当前查询，它将总是回到模拟预处理语句上。</p>
+</blockquote>
+<p>而在此情况下，prepare 语句不会和数据库服务器交互。<br><a href="https://www.php.net/manual/zh/pdo.prepare.php" target="_blank" rel="noopener">https://www.php.net/manual/zh/pdo.prepare.php</a></p>
+<blockquote>
+<p>模拟模式下的 prepare 语句不会和数据库服务器交互，所以 <code>PDO::prepare()</code> 不会检查语句。</p>
+</blockquote>
+<p>所以，重连后重新执行预处理方式的SQL语句时，需要重新运行 prepare 来返回新的 PDOStatement 对象。</p>
+<h3 id="PDO-ATTR-PERSISTENT"><a href="#PDO-ATTR-PERSISTENT" class="headerlink" title="PDO::ATTR_PERSISTENT"></a><code>PDO::ATTR_PERSISTENT</code></h3><p>当然，可以通过长连接来实现不超时断连。<br>PDO 提供了 <code>PDO::ATTR_PERSISTENT</code> 来设置建立的连接是否为长连接。<br>备注：PHP中实现的数据库长连接，实际上是通过复用与数据库建连的子进程来实现的，如果某个请求占用了子进程，则新的请求会触发创建新的子进程来与数据库建连。（注意区分传统意义上通过线程实现的数据库连接池）<br>更多了解可以参考官方文档：<a href="https://www.php.net/manual/zh/features.persistent-connections.php" target="_blank" rel="noopener">https://www.php.net/manual/zh/features.persistent-connections.php</a></p>
+<p>这种方式虽然简洁，但没那么健壮，更好的方式还是捕获 gone away 异常并重新建连。</p>
+<h2 id="Phalcon-框架下实现重连"><a href="#Phalcon-框架下实现重连" class="headerlink" title="Phalcon 框架下实现重连"></a>Phalcon 框架下实现重连</h2><p>Phalcon 的数据库操作有很多种方式：<a href="http://www.iphalcon.cn/reference/phql.html#sql-using-raw-sql" target="_blank" rel="noopener">原生</a>、<a href="http://www.iphalcon.cn/reference/models.html" target="_blank" rel="noopener">模型</a>、<a href="http://www.iphalcon.cn/reference/phql.html" target="_blank" rel="noopener">PHQL</a>。<br>所以要实现重连，我们只能在 Db Adapter 上实现。<br>通过继承 <code>Phalcon\Db\Adapter\Pdo\Mysql</code> 来扩展自己的 MySQL 逻辑：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> <span class="title">Phalcon</span>\<span class="title">Db</span>\<span class="title">Adapter</span>\<span class="title">Pdo</span>\<span class="title">Mysql</span> <span class="title">as</span> <span class="title">BaseMysql</span>;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Mysql</span> <span class="keyword">extends</span> <span class="title">BaseMysql</span></span></span><br><span class="line"><span class="class"></span>&#123;</span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * MySQL server has gone away</span></span><br><span class="line"><span class="comment">     * https://dev.mysql.com/doc/mysql-errors/5.7/en/client-error-reference.html#error_cr_server_gone_error</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">const</span> CR_SERVER_GONE_ERROR = <span class="number">2006</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * Lost connection to MySQL server during query</span></span><br><span class="line"><span class="comment">     * https://dev.mysql.com/doc/mysql-errors/5.7/en/client-error-reference.html#error_cr_server_lost</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">const</span> CR_SERVER_LOST = <span class="number">2013</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">_callExec</span><span class="params">($fun, $args = [])</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">for</span> ($i = <span class="number">0</span>; $i &lt; <span class="number">2</span>; $i ++) &#123;<span class="comment">// 控制只重试一次</span></span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> call_user_func_array($fun, $args);</span><br><span class="line">            &#125; <span class="keyword">catch</span> (\PDOException $e) &#123;</span><br><span class="line">                $error = $e-&gt;errorInfo;</span><br><span class="line">                <span class="keyword">if</span> (<span class="keyword">isset</span>($error[<span class="number">1</span>]) &amp;&amp; in_array($error[<span class="number">1</span>], [<span class="keyword">self</span>::CR_SERVER_LOST, <span class="keyword">self</span>::CR_SERVER_GONE_ERROR], <span class="keyword">true</span>)) &#123;</span><br><span class="line">                    <span class="keyword">$this</span>-&gt;close();</span><br><span class="line">                    <span class="keyword">if</span> (<span class="keyword">$this</span>-&gt;connect()) &#123;<span class="comment">// 建立新的连接</span></span><br><span class="line">                        <span class="comment">// 得用新的 PDOStatement 对象来执行预处理SQL</span></span><br><span class="line">                        <span class="keyword">if</span> ($fun[<span class="number">1</span>] === <span class="string">'executePrepared'</span>) &#123;</span><br><span class="line">                            $args[<span class="number">0</span>] = <span class="keyword">$this</span>-&gt;prepare($args[<span class="number">0</span>]-&gt;queryString);</span><br><span class="line">                        &#125;</span><br><span class="line">                        <span class="keyword">continue</span>;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">throw</span> $e;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">prepare</span><span class="params">($sqlStatement)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">$this</span>-&gt;_callExec([<span class="string">'parent'</span>, <span class="string">'prepare'</span>], [$sqlStatement]);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">executePrepared</span><span class="params">(\PDOStatement $statement, array $placeholders, $dataTypes)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">$this</span>-&gt;_callExec([<span class="string">'parent'</span>, <span class="string">'executePrepared'</span>], [$statement, $placeholders, $dataTypes]);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">query</span><span class="params">($sqlStatement, $bindParams = null, $bindTypes = null)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">$this</span>-&gt;_callExec([<span class="string">'parent'</span>, <span class="string">'query'</span>], [$sqlStatement, $bindParams, $bindTypes]);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">execute</span><span class="params">($sqlStatement, $bindParams = null, $bindTypes = null)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">$this</span>-&gt;_callExec([<span class="string">'parent'</span>, <span class="string">'execute'</span>], [$sqlStatement, $bindParams, $bindTypes]);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="关于-PDO-中的-errorInfo"><a href="#关于-PDO-中的-errorInfo" class="headerlink" title="关于 PDO 中的 errorInfo"></a>关于 PDO 中的 <code>errorInfo</code></h3><p><code>Phalcon\Db\Adapter\Pdo\AbstractPdo</code> 中的 <code>getErrorInfo</code> 实际上是 <code>PDO::errorInfo()</code><br><a href="https://github.com/phalcon/cphalcon/blob/master/phalcon/Db/Adapter/Pdo/AbstractPdo.zep#L593" target="_blank" rel="noopener">https://github.com/phalcon/cphalcon/blob/master/phalcon/Db/Adapter/Pdo/AbstractPdo.zep#L593</a></p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="function"><span class="keyword">function</span> <span class="title">getErrorInfo</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> this-&gt;pdo-&gt;errorInfo();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>而官方手册上有这么一段说明：<br><a href="https://www.php.net/manual/zh/pdo.errorinfo.php" target="_blank" rel="noopener">https://www.php.net/manual/zh/pdo.errorinfo.php</a></p>
+<blockquote>
+<p>PDO::errorInfo() only retrieves error information for operations performed directly on the database handle. If you create a PDOStatement object through PDO::prepare() or PDO::query() and invoke an error on the statement handle, PDO::errorInfo() will not reflect the error from the statement handle. You must call PDOStatement::errorInfo() to return the error information for an operation performed on a particular statement handle.</p>
+</blockquote>
+<p>也就是说，<code>PDO::errorInfo()</code> 只获取直接在数据库句柄上执行操作的错误信息。<br>如果错误是发生在通过 <code>PDO::prepare()</code> 或 <code>PDO::query()</code> 创建的 PDOStatement 对象句柄上，则必须用 <code>PDOStatement::errorInfo()</code> 来获取。<br>而我们很难在封装的 Phalcon 里获取 PDOStatement 对象，怎么办？<br><a href="https://www.php.net/manual/zh/class.pdoexception.php#pdoexception.props.errorinfo" target="_blank" rel="noopener">https://www.php.net/manual/zh/class.pdoexception.php#pdoexception.props.errorinfo</a><br>PDOException 的 errorInfo 包含了 <code>PDO::errorInfo()</code> 和 <code>PDOStatement::errorInfo()</code> 的情况，Nice！</p>
+<h3 id="Phalcon-Db-Adapter-Pdo-AbstractPdo-中的-executePrepared"><a href="#Phalcon-Db-Adapter-Pdo-AbstractPdo-中的-executePrepared" class="headerlink" title="Phalcon\Db\Adapter\Pdo\AbstractPdo 中的 executePrepared"></a><code>Phalcon\Db\Adapter\Pdo\AbstractPdo</code> 中的 <code>executePrepared</code></h3><p><code>Phalcon\Db\Adapter\Pdo\AbstractPdo</code> 的 <code>query</code> 方法调用了自身的 <code>executePrepared</code> 方法<br><a href="https://github.com/phalcon/cphalcon/blob/master/phalcon/Db/Adapter/Pdo/AbstractPdo.zep#L719" target="_blank" rel="noopener">https://github.com/phalcon/cphalcon/blob/master/phalcon/Db/Adapter/Pdo/AbstractPdo.zep#L719</a><br>而 <code>executePrepared</code> 方法传入的 statement 是用 <code>pdo-&gt;prepare(sqlStatement)</code> 创建的<br><a href="https://github.com/phalcon/cphalcon/blob/master/phalcon/Db/Adapter/Pdo/AbstractPdo.zep#L754" target="_blank" rel="noopener">https://github.com/phalcon/cphalcon/blob/master/phalcon/Db/Adapter/Pdo/AbstractPdo.zep#L754</a><br>根据之前的梳理，我们知道，异常是在 <code>statement-&gt;execute()</code> 上抛出的，但重新执行 execute 必须创建新的 PDOStatement 对象。</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> ($fun[<span class="number">1</span>] === <span class="string">'executePrepared'</span>) &#123;</span><br><span class="line">    <span class="comment">// PDOStatement 的 queryString 属性记录了所用的查询字符串，即 SQL 语句</span></span><br><span class="line">    $args[<span class="number">0</span>] = <span class="keyword">$this</span>-&gt;prepare($args[<span class="number">0</span>]-&gt;queryString);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>至此，问题搞定，写段代码来测试一下吧：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">$i = <span class="number">0</span>;</span><br><span class="line"><span class="keyword">do</span> &#123;</span><br><span class="line">    $i ++;</span><br><span class="line">    $message = <span class="string">'第 '</span>.$i.<span class="string">' 次：'</span>;</span><br><span class="line">    <span class="keyword">try</span> &#123;</span><br><span class="line">        $model = UserModel::findFirst();</span><br><span class="line">        <span class="keyword">if</span> ($model) &#123;</span><br><span class="line">            $user = $model-&gt;toArray();</span><br><span class="line">            $message .= $user[<span class="string">'name'</span>].PHP_EOL;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">catch</span> (\<span class="keyword">Exception</span> $e) &#123;</span><br><span class="line">        $message .= $e-&gt;getMessage();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">echo</span> $message;</span><br><span class="line">    $sleepTime = $i % <span class="number">2</span> ? <span class="number">1</span> : <span class="number">6</span>;<span class="comment">// 分别试试正常和超时的情况</span></span><br><span class="line">    sleep($sleepTime);</span><br><span class="line">&#125; <span class="keyword">while</span> ($i &lt; <span class="number">10</span>);</span><br></pre></td></tr></table></figure>
+
+<h2 id="几个问题"><a href="#几个问题" class="headerlink" title="几个问题"></a>几个问题</h2><h3 id="为什么-dbh-null-就可以关闭-PDO-建立的-MySQL-连接？"><a href="#为什么-dbh-null-就可以关闭-PDO-建立的-MySQL-连接？" class="headerlink" title="为什么 $dbh = null 就可以关闭 PDO 建立的 MySQL 连接？"></a>为什么 <code>$dbh = null</code> 就可以关闭 PDO 建立的 MySQL 连接？</h3><p><a href="https://www.php.net/manual/zh/pdo.connections.php" target="_blank" rel="noopener">https://www.php.net/manual/zh/pdo.connections.php</a></p>
+<blockquote>
+<p>连接在 PDO 对象的生存周期中保持活动。<br>要想关闭连接，需要销毁对象以确保所有剩余到它的引用都被删除，可以赋一个 null 值给对象变量。<br>如果不明确地这么做，PHP 在脚本结束时会自动关闭连接。</p>
+</blockquote>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><p><a href="https://qa.1r1g.com/sf/ask/1640306391/" target="_blank" rel="noopener">完全理解 PDO ATTR_PERSISTENT</a><br><a href="http://www.iphalcon.cn/index.html" target="_blank" rel="noopener">Phalcon 中文文档</a><br><a href="https://github.com/phalcon/cphalcon/tree/master/phalcon" target="_blank" rel="noopener">Phalcon 源码</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/PDO/" rel="tag"># PDO</a>
+              <a href="/tags/gone-away/" rel="tag"># gone away</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/value-passing-vs-reference-passing/" rel="prev" title="值传递与引用传递">
+      <i class="fa fa-chevron-left"></i> 值传递与引用传递
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+        </div>
+        
+    <div class="comments" id="valine-comments"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Meegle</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+  
+  <script>
+    (function(){
+      var bp = document.createElement('script');
+      var curProtocol = window.location.protocol.split(':')[0];
+      bp.src = (curProtocol === 'https') ? 'https://zz.bdstatic.com/linksubmit/push.js' : 'http://push.zhanzhang.baidu.com/push.js';
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(bp, s);
+    })();
+  </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+
+<script>
+NexT.utils.loadComments(document.querySelector('#valine-comments'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/valine@1/dist/Valine.min.js', () => {
+    new Valine(Object.assign({
+      el  : '#valine-comments',
+      path: location.pathname,
+    }, {"enable":true,"appId":"0DFjQujwMejBjMdRN3BXBbV4","appKey":"K5U8WSiJMA4o3T1OR1k1J23J","placeholder":"写下你的评论...","avatar":"mm","meta":["nick","mail","link"],"pageSize":10,"language":"zh-cn","visitor":false,"comment_count":true,"recordIP":false,"serverURLs":null}
+    ));
+  }, window.Valine);
+});
+</script>
+
+</body>
+</html>

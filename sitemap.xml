@@ -2,6 +2,13 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>https://meegle.github.io/mysql-reconnect-in-pdo/</loc>
+    
+    <lastmod>2021-08-13</lastmod>
+    
+  </url>
+  
+  <url>
     <loc>https://meegle.github.io/value-passing-vs-reference-passing/</loc>
     
     <lastmod>2021-04-24</lastmod>
@@ -102,7 +109,7 @@
 
   <url>
     <loc>https://meegle.github.io/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
@@ -110,175 +117,189 @@
   
   <url>
     <loc>https://meegle.github.io/tags/%E7%BC%96%E7%A0%81/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/%E5%88%86%E5%B8%83%E5%BC%8F/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/%E9%94%81/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/%E4%BA%8B%E5%8A%A1/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/IO%E6%A8%A1%E5%9E%8B/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/EPOLL/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/JavaScript/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/OOP/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/%E5%87%BD%E6%95%B0%E5%BC%8F%E7%BC%96%E7%A8%8B/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/Python/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/%E5%8F%AF%E5%8F%98%E5%AF%B9%E8%B1%A1/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/%E5%AF%B9%E8%B1%A1%E6%8B%B7%E8%B4%9D/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/%E6%B5%AE%E7%82%B9%E6%95%B0/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/IEEE754/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/%E6%95%B0%E6%8D%AE%E5%90%8C%E6%AD%A5/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/%E6%8C%87%E9%92%88/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/%E5%BC%95%E7%94%A8/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/Zval/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/SymbolTable/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/COW%E6%9C%BA%E5%88%B6/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/%E8%BD%AF%E4%BB%B6%E6%9E%B6%E6%9E%84/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/4-1%E8%A7%86%E5%9B%BE%E6%A8%A1%E5%9E%8B/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/TOGAF/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/%E6%9E%B6%E6%9E%84%E5%B8%88/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/tags/MySQL/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://meegle.github.io/tags/PDO/</loc>
+    <lastmod>2021-08-13</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://meegle.github.io/tags/gone-away/</loc>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
@@ -287,42 +308,42 @@
   
   <url>
     <loc>https://meegle.github.io/categories/%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/categories/%E6%9E%B6%E6%9E%84/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/categories/%E9%AB%98%E5%B9%B6%E5%8F%91/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/categories/%E7%BC%96%E7%A8%8B%E8%AF%AD%E8%A8%80/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/categories/%E8%BF%90%E7%BB%B4/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
   
   <url>
     <loc>https://meegle.github.io/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/</loc>
-    <lastmod>2021-04-24</lastmod>
+    <lastmod>2021-08-13</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
